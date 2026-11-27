@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini Access — Facilitator Dashboard · THE CARPE DIEM</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/webp" href="assets/cd-mark.webp">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  body{background:var(--bg)}
+  .admin-wrap{max-width:1180px;margin:0 auto;padding:24px 18px 60px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:18px}
+  .panel h2{font-size:18px;color:var(--navy);margin-bottom:12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+  .kpi{background:var(--navy-soft);border-radius:12px;padding:14px}
+  .kpi b{display:block;font-size:24px;color:var(--navy);line-height:1.1}
+  .kpi span{font-size:12px;color:var(--muted);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  tr:hover td{background:#fbfcfe}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+  .pill.PENDING_REVIEW,.pill.REQUESTED{background:var(--yellow-soft);color:#7a5a06}
+  .pill.CONFIRMED{background:var(--green-soft);color:var(--green)}
+  .pill.COMPLETED{background:var(--navy-soft);color:var(--navy)}
+  .pill.CANCELLED,.pill.NO_SHOW{background:#fde8e8;color:#7f1d1d}
+  .pill.REFERRED{background:var(--warn-soft);color:var(--warn)}
+  .pill.RESCHEDULE_REQUESTED{background:#e8e0fb;color:#4c1d95}
+  .acts{display:flex;gap:4px;flex-wrap:wrap}
+  .acts button{font-size:11.5px;font-weight:700;padding:5px 8px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--navy);cursor:pointer}
+  .acts button:hover{border-color:var(--navy)}
+  .acts button.ok{background:var(--green-soft);border-color:#b7e4c7;color:#14532d}
+  .acts button.bad{background:#fde8e8;border-color:#f5b5b5;color:#7f1d1d}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  input,select,textarea{padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
+  .rank{display:grid;gap:6px}
+  .rank .row{display:grid;grid-template-columns:1fr 40px;gap:10px;align-items:center;font-size:13px}
+  .rank .track{height:8px;background:var(--navy-soft);border-radius:99px;overflow:hidden;grid-column:1/-1}
+  .rank .fill{height:100%;background:var(--yellow)}
+  .muted{color:var(--muted);font-size:12.5px}
+  .toast{position:fixed;right:18px;bottom:18px;background:var(--navy);color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;display:none;z-index:99;max-width:340px}
+  .login{max-width:440px;margin:80px auto;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:28px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img class="mark" src="assets/cd-mark.webp" alt="CD"><span>THE CARPE DIEM<small>GEMINI ACCESS · FACILITATOR</small></span></a>
+    <nav class="main"><a href="gemini.html">Public form</a><a href="resources.html">Resources</a></nav>
+  </div>
+</header>
+
+<div class="login" id="loginBox">
+  <h2 style="font-size:20px;color:var(--navy);margin-bottom:6px">Facilitator dashboard</h2>
+  <p class="muted" style="margin-bottom:16px">Enter the admin token. It stays in this browser tab only.</p>
+  <input type="password" id="token" placeholder="Admin token" style="width:100%;margin-bottom:12px">
+  <button class="btn navy" id="loginBtn" style="width:100%">Open dashboard</button>
+  <p class="muted" id="loginErr" style="color:#7f1d1d;margin-top:10px"></p>
+</div>
+
+<div class="admin-wrap" id="app" style="display:none">
+  <div class="bar">
+    <button class="btn line" id="refresh">↻ Refresh</button>
+    <span class="muted" id="updated"></span>
+    <span style="flex:1"></span>
+    <button class="btn line" id="logout">Lock</button>
+  </div>
+
+  <div class="panel">
+    <h2>Overview</h2>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Hall ranking (demand)</h2>
+    <div class="rank" id="halls"></div>
+    <p class="muted" id="dayCounts" style="margin-top:12px"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Requests</h2>
+    <div class="bar">
+      <select id="fStatus">
+        <option value="ALL">All statuses</option>
+        <option>PENDING_REVIEW</option><option>CONFIRMED</option><option>RESCHEDULE_REQUESTED</option>
+        <option>COMPLETED</option><option>CANCELLED</option><option>NO_SHOW</option><option>REFERRED</option>
+      </select>
+      <input type="date" id="fDate">
+      <button class="btn line" id="applyFilter">Filter</button>
+    </div>
+    <div style="overflow-x:auto"><table id="bookings"></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Block a slot</h2>
+    <div class="bar">
+      <input type="date" id="blockDate">
+      <input type="time" id="blockTime" step="1800">
+      <input type="text" id="blockReason" placeholder="Reason (optional)">
+      <button class="btn line" id="blockBtn">Block</button>
+      <button class="btn line" id="unblockBtn">Unblock</button>
+    </div>
+    <p class="muted">Blocked windows never appear as available to students.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://162.35.40.27.sslip.io';
+const $ = id => document.getElementById(id);
+let TOKEN = sessionStorage.getItem('cdg_admin') || '';
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 3500); }
+
+async function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers || {}, { 'X-Admin-Token': TOKEN });
+  const r = await fetch(API + path, opts);
+  let j = null; try { j = await r.json(); } catch (_) {}
+  if (r.status === 401) { lock(); throw new Error('Token rejected'); }
+  if (!r.ok || !j || j.ok === false) throw new Error((j && j.error) || ('Failed ' + r.status));
+  return j;
+}
+
+function lock(){ TOKEN = ''; sessionStorage.removeItem('cdg_admin'); $('app').style.display = 'none'; $('loginBox').style.display = 'block'; }
+
+async function login() {
+  TOKEN = $('token').value.trim();
+  try {
+    await api('/api/admin/summary');
+    sessionStorage.setItem('cdg_admin', TOKEN);
+    $('loginBox').style.display = 'none';
+    $('app').style.display = 'block';
+    loadAll();
+  } catch (e) {
+    $('loginErr').textContent = 'Could not open: ' + e.message;
+  }
+}
+
+function renderSummary(s) {
+  $('kpis').innerHTML = [
+    ['Total requests', s.total], ['Active', s.live],
+    ['Pending review', (s.statuses.PENDING_REVIEW || 0) + (s.statuses.REQUESTED || 0)],
+    ['Confirmed', s.statuses.CONFIRMED || 0], ['Completed', s.statuses.COMPLETED || 0]
+  ].map(([k, v]) => '<div class="kpi"><b>' + v + '</b><span>' + k + '</span></div>').join('');
+
+  const max = Math.max(1, ...s.halls.map(h => h.n));
+  $('halls').innerHTML = s.halls.length
+    ? s.halls.map(h => '<div class="row"><span>' + esc(h.hall) + '</span><b style="text-align:right">' + h.n + '</b><div class="track"><div class="fill" style="width:' + Math.round(h.n / max * 100) + '%"></div></div></div>').join('')
+    : '<p class="muted">No requests yet.</p>';
+
+  $('dayCounts').textContent = 'By day: ' + (Object.keys(s.days).length ? Object.entries(s.days).map(([d, n]) => d + ' ' + n).join(' · ') : 'none yet');
+}
+
+function slotWindow(start, mins) {
+  const [h, m] = start.split(':').map(Number);
+  const t = h * 60 + m + (mins || 30);
+  const fmt = x => { const hh = Math.floor(x / 60) % 24; const mm = x % 60; const ap = hh >= 12 ? 'PM' : 'AM'; const h12 = ((hh + 11) % 12) + 1; return h12 + ':' + String(mm).padStart(2, '0') + ' ' + ap; };
+  return fmt(h * 60 + m) + ' – ' + fmt(t);
+}
+
+function renderBookings(list) {
+  const t = $('bookings');
+  if (!list.length) { t.innerHTML = '<tr><td class="muted">No requests match.</td></tr>'; return; }
+  t.innerHTML = '<thead><tr><th>Ref</th><th>Student</th><th>Programme</th><th>Hall</th><th>Requested</th><th>Readiness</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
+    list.map(b => {
+      const ready = [b.gmail && 'Gmail', b.pdf && 'PDF', b.ghanacard && 'Card', b.ghs5 && 'GHS5(Google)'].filter(Boolean).join(' · ') || 'none';
+      const acts = [];
+      if (b.status !== 'CONFIRMED') acts.push('<button class="ok" data-act="approve" data-id="' + b.id + '">Approve</button>');
+      acts.push('<button data-act="reschedule" data-id="' + b.id + '">Move</button>');
+      acts.push('<button data-act="decline" data-id="' + b.id + '">Decline</button>');
+      if (b.status === 'CONFIRMED') acts.push('<button class="ok" data-act="complete" data-id="' + b.id + '">Done</button>');
+      acts.push('<button data-act="noshow" data-id="' + b.id + '">No-show</button>');
+      acts.push('<button class="bad" data-act="cancel" data-id="' + b.id + '">Cancel</button>');
+      acts.push('<button data-act="refer" data-id="' + b.id + '">Refer</button>');
+      return '<tr>' +
+        '<td><b>' + esc(b.id) + '</b><br><span class="muted">' + esc((b.created || '').replace('T', ' ').slice(0, 16)) + '</span></td>' +
+        '<td>' + esc(b.full_name) + '<br><span class="muted">' + esc(b.phone) + '</span></td>' +
+        '<td>' + esc(b.programme) + '<br><span class="muted">' + esc(b.level) + '</span></td>' +
+        '<td>' + esc(b.hall) + (b.room ? '<br><span class="muted">Rm ' + esc(b.room) + '</span>' : '') + '</td>' +
+        '<td>' + esc(b.dayName) + ' ' + esc(b.date) + '<br><span class="muted">' + esc(slotWindow(b.slot)) + '</span>' + (b.meeting ? '<br><span class="muted">📍 ' + esc(b.meeting) + '</span>' : '') + '</td>' +
+        '<td>' + esc(ready) + '</td>' +
+        '<td><span class="pill ' + esc(b.status) + '">' + esc(b.status.replace('_', ' ')) + '</span></td>' +
+        '<td><div class="acts">' + acts.join('') + '</div></td>' +
+      '</tr>';
+    }).join('') + '</tbody>';
+}
+
+async function loadBookings() {
+  const status = $('fStatus').value;
+  const date = $('fDate').value;
+  const j = await api('/api/admin/bookings?status=' + encodeURIComponent(status) + (date ? '&date=' + encodeURIComponent(date) : ''));
+  renderBookings(j.bookings);
+}
+
+async function loadAll() {
+  try {
+    const s = await api('/api/admin/summary');
+    renderSummary(s);
+    await loadBookings();
+    $('updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (e) { toast('Load failed: ' + e.message); }
+}
+
+async function doAction(id, action) {
+  const body = { id, action };
+  if (action === 'approve') {
+    const m = prompt('Meeting point for the confirmation message (optional):', '');
+    if (m === null) return;
+    body.meeting = m;
+  } else if (action === 'decline' || action === 'cancel' || action === 'refer') {
+    const n = prompt('Note for the record (optional):', '');
+    if (n === null) return;
+    body.note = n;
+  } else if (action === 'reschedule') {
+    const date = prompt('New date (YYYY-MM-DD):', '');
+    if (!date) return;
+    const time = prompt('New start time (HH:MM, e.g. 19:00):', '');
+    if (!time) return;
+    body.slot = date + 'T' + time;
+  }
+  try {
+    const j = await api('/api/admin/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    toast('Saved: ' + (j.booking ? j.booking.status : 'ok'));
+    loadAll();
+  } catch (e) { toast('Action failed: ' + e.message); }
+}
+
+$('bookings').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  doAction(b.dataset.id, b.dataset.act);
+});
+
+$('loginBtn').addEventListener('click', login);
+$('token').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('refresh').addEventListener('click', loadAll);
+$('logout').addEventListener('click', lock);
+$('applyFilter').addEventListener('click', loadBookings);
+
+$('blockBtn').addEventListener('click', async () => {
+  const d = $('blockDate').value, t = $('blockTime').value;
+  if (!d || !t) return toast('Pick a date and time');
+  try {
+    await api('/api/admin/block', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: d + 'T' + t, reason: $('blockReason').value }) });
+    toast('Slot blocked');
+  } catch (e) { toast('Block failed: ' + e.message); }
+});
+
+$('unblockBtn').addEventListener('click', async () => {
+  const d = $('blockDate').value, t = $('blockTime').value;
+  if (!d || !t) return toast('Pick a date and time');
+  try {
+    await api('/api/admin/block', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: d + 'T' + t, unblock: true }) });
+    toast('Slot unblocked');
+  } catch (e) { toast('Unblock failed: ' + e.message); }
+});
+
+if (TOKEN) {
+  $('loginBox').style.display = 'none';
+  $('app').style.display = 'block';
+  loadAll();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101014">
+<title>The Carpe Diem Classroom — Introductory Genetics</title>
+<script src="runtime/tts.js"></script>
+<style>
+:root{--bg:#101014;--bg2:#1a1a20;--chalk:#F8F4ED;--gold:#FEB704;--line:#6b5008;--dim:#a39a86;--red2:#e0453f;--green:#4fd18b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--chalk);font:16px/1.5 Georgia,"Times New Roman",serif;min-height:100vh;overflow-wrap:anywhere}
+#wrap{max-width:980px;margin:0 auto;padding:12px 12px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:1.3rem;margin:.2em 0;color:var(--gold)}
+.dim{color:var(--dim);font-size:.85rem}
+#stageWrap{position:relative;border:2px solid var(--line);border-radius:14px;background:var(--bg2);overflow:hidden}
+canvas{display:block;width:100%;height:auto}
+#dlg{min-height:86px;border:2px solid var(--line);border-radius:12px;background:var(--bg2);margin-top:10px;padding:10px 14px;cursor:pointer}
+#dlgName{color:var(--gold);font-weight:700}
+#dlgText{white-space:pre-wrap}
+#ctrls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button{font:inherit;background:var(--gold);color:#0b0a12;border:0;border-radius:10px;padding:10px 16px;min-height:44px;cursor:pointer;font-weight:700}
+button.alt{background:transparent;color:var(--gold);border:1px solid var(--line)}
+button:disabled{opacity:.4}
+#dots{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.dot{width:12px;height:12px;border-radius:50%;border:1px solid var(--line);background:transparent;cursor:pointer;padding:0;min-height:0}
+.dot.on{background:var(--gold)}
+/* question overlay */
+#qov{position:absolute;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;padding:14px;z-index:5}
+#qov.show{display:flex}
+#qcard{background:var(--bg2);border:2px solid var(--gold);border-radius:14px;padding:16px;max-width:640px;width:100%;max-height:100%;overflow:auto}
+#qcard .who{color:var(--dim);font-size:.9rem;margin-bottom:6px}
+#qcard .q{margin-bottom:10px}
+.opt{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);color:var(--chalk);border-radius:10px;padding:10px 12px;margin:6px 0;min-height:44px;font-weight:400}
+.opt.ok{border-color:var(--green);color:var(--green)}
+.opt.no{border-color:var(--red2);color:var(--red2)}
+.opt:disabled{cursor:default}
+#qwhy{font-size:.9rem;color:var(--dim);margin-top:8px;white-space:pre-wrap}
+#score-pill{position:absolute;top:8px;right:10px;background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:.85rem;color:var(--gold)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🧬 The Carpe Diem Classroom</h1>
+  <div class="dim">BIOL 153 · Introductory Genetics · Dr. D. Adu Mensah (stickman edition) · Powered by Kingfahd Pappoe</div>
+  <div id="stageWrap">
+    <canvas id="cv"></canvas>
+    <div id="score-pill">✋ 0/20</div>
+    <div id="qov"><div id="qcard">
+      <div class="who" id="qwho"></div><div class="q" id="qtext"></div>
+      <div id="qopts"></div><div id="qwhy"></div>
+      <div style="text-align:right;margin-top:10px"><button id="qnext" class="alt" style="display:none">Continue the lecture →</button></div>
+    </div></div>
+  </div>
+  <div id="dlg" title="click to advance"><span id="dlgName"></span><div id="dlgText"></div></div>
+  <div id="ctrls">
+    <button id="bStart">🎓 Enter the classroom</button>
+    <button id="bPrev" class="alt" disabled>◀ Back</button>
+    <button id="bNext" class="alt" disabled>Next ▶</button>
+    <button id="bPause" class="alt" disabled>⏸ Auto</button>
+    <button id="bMute" class="alt">🔊 Voice on</button>
+    <button id="bRestart" class="alt" disabled>↺ Restart</button>
+  </div>
+  <div id="dots"></div>
+  <div class="dim" id="ttsState"></div>
+</div>
+<script>
+'use strict';
+/* ============ THE SCRIPT — scene beats, cast, and 20 pilot questions ============ */
+/* beat types: scene | teach (lecturer writes+speaks) | line (student banter) | q (pause + question) */
+const SCRIPT=[
+{t:"scene",title:"Scene 1 · What is Genetics?"},
+{t:"teach",board:["GENETICS = heredity + variation","GENE = unit of heredity","DNA -> instructions for LIFE"],say:"Good morning, class. Settle down. Today we begin Introductory Genetics — the science of heredity and variation. Write this on your minds: genes are the hereditary units transmitted from one generation to the next."},
+{t:"line",who:"jojo",say:"Sir, is that why I inherited my uncle's stubbornness?"},
+{t:"line",who:"lect",say:"Inheritance of stubbornness is not in the syllabus, Jojo. But your genes do control function, development, and your ultimate appearance. Which explains your haircut."},
+{t:"q",who:"ama",pre:"Ooh sir! Me! I know this one already!",q:"Genetics is best defined as the branch of biology dealing with…",opts:["Heredity and variation","Classification of organisms","Chemical reactions in cells","Structure of tissues"],ans:0,why:["Correct — genetics is heredity plus variation, full stop.","That is taxonomy, not genetics.","That is biochemistry's territory.","That is histology. Sit with the right answer next time."]},
+{t:"teach",board:["Genes live on CHROMOSOMES","Gene location = LOCUS","GENOTYPE (your alleles) -> PHENOTYPE (what shows)"],say:"A gene is a section of a chromosome that codes for a particular protein. Where it sits on the chromosome is called its locus. And remember: your genotype is the alleles you carry; your phenotype is what actually shows."},
+{t:"line",who:"oko",say:"Sir, so my genotype is what I carry, and my phenotype is what people see?"},
+{t:"line",who:"lect",say:"Exactly, Oko. What people see — the phenotype — is the result of gene products expressed in a given environment."},
+{t:"q",who:"kofi",pre:"…zzz… huh? …who died?",q:"A gene's specific location on a chromosome is called its…",opts:["Allele","Locus","Genotype","Trait"],ans:1,why:["An allele is a variant OF a gene, not its address.","Correct — the locus is the gene's position on the chromosome.","Genotype is the full set of alleles an individual carries.","A trait is the observable characteristic."]},
+{t:"q",who:"dumb",pre:"Easy sir! It is the one that hides! The shy one!",q:"An allele is best described as…",opts:["A whole chromosome","A variation — one of the different forms of a gene","The protein made by a gene","The cell's energy currency"],ans:1,why:["No — a chromosome CARRIES many genes.","Correct — every different version of a gene is an allele of that gene.","That is the gene product, not the allele.","That is ATP. Wrong subject entirely."]},
+{t:"scene",title:"Scene 2 · Early Theories — Before Mendel"},
+{t:"teach",board:["PANGENESIS (Darwin): pangenes/gemmules","body parts -> blood -> gonads -> offspring","LAMARCKISM: acquired traits inherited"],say:"Before Mendel, people still wanted explanations. Darwin proposed pangenesis: every body part contributes particles — pangenes or gemmules — carried through the blood to the sperm or egg, and inherited by the offspring."},
+{t:"line",who:"jojo",say:"So if I go to the gym, my babies will be born with six packs? Darwin said that?"},
+{t:"line",who:"lect",say:"That, Jojo, is closer to Lamarckism — the idea that traits you ACQUIRE in your lifetime, like the bodybuilder's muscle or a tattoo, pass to your children. Charming idea. Wrong."},
+{t:"line",who:"ama",say:"Actually sir, Weismann disproved that. August Weismann — the germplasm theory. It was the first serious challenge to pangenesis."},
+{t:"line",who:"lect",say:"…I was going to say that, Ama. But yes. Well rehearsed."},
+{t:"q",who:"oko",pre:"Sir! Was it not the one with the… the little man in the sperm?",q:"Which 17th-century claim described a tiny fully-formed human inside the sperm cell?",opts:["The gemmule","The homunculus","The zygote","The pangene"],ans:1,why:["Gemmules were Darwin's pangenesis particles.","Correct — the homunculus, the 'little man' claimed inside the spermatozoon.","The zygote is the real fertilised egg cell.","Another pangenesis particle. Try again."]},
+{t:"q",who:"dumb",pre:"Sir! Weismann… he was the pea guy, right?",q:"Whose germplasm theory made the FIRST serious challenge to pangenesis?",opts:["Lamarck","August Weismann","Kasper Wolff","Jan Swammerdam"],ans:1,why:["Lamarck proposed acquired characteristics — a different theory.","Correct — Weismann's germplasm theory challenged pangenesis.","Wolff co-proposed epigenesis later.","Swammerdam was a preformationist."]},
+{t:"q",who:"efua",pre:"If I may, sir — I read about the ovists.",q:"Preformationists were divided into two camps. They were…",opts:["Spermatists and ovists","Mendelians and Darwinians","Geneticists and epigeneticists","Lamarckians and Darwinians"],ans:0,why:["Correct — some placed the preformed human in the sperm, others in the egg.","Those are schools of evolutionary thought, not preformation camps.","Epigenesis was the RIVAL theory.","Only one of these is even a real pairing."]},
+{t:"q",who:"dumb",pre:"Epi… epi-genesis… the one with the egg, sir?",q:"Epigenesis — proposed by Kasper Wolff and Karl Ernst von Baer — held that…",opts:["The body is fully preformed in the zygote","Acquired traits are inherited","The sex cells contain nothing resembling the body that develops from them","Pangenes travel through the blood"],ans:2,why:["That is preformation — the theory epigenesis DISPROVED.","That is Lamarckism, a different wrong idea entirely.","Correct — development is differentiation AND growth, through transformations.","Back to pangenesis with Darwin."]},
+{t:"teach",board:["What is inherited = INSTRUCTIONS (DNA)","+ environment -> organism","Epigenesis > Preformation"],say:"So what is actually transmitted from parent to offspring? A set of instructions — genetic information in the DNA — which, interacting with the environment, directs development. The organism is NOT preformed in the zygote."},
+{t:"scene",title:"Scene 3 · Mendel & the Law of Segregation"},
+{t:"teach",board:["MENDEL: Austrian monk, Brno","Pisum sativum — the garden pea","P x P -> F1 (all tall) -> F2 = 3:1"],say:"Enter Gregor Mendel. Austrian monk, monastery of St Thomas in Brno. He studied botany AND mathematics — remember the mathematics, it matters. He worked with the garden pea, Pisum sativum."},
+{t:"line",who:"jojo",say:"Sir, with all due respect — the man had 28,000 plants and no Netflix."},
+{t:"line",who:"lect",say:"And with those 28,000 plants he found the pattern the whole world had missed. Why peas? Easy to cultivate, short life cycle, perfect flowers that can self-fertilise, and clearly discontinuous traits — tall or dwarf, no in-betweens."},
+{t:"q",who:"ama",pre:"Sir — perfect flowers! Both sexes on one plant!",q:"Which was NOT among the reasons Mendel chose the garden pea?",opts:["Easy to cultivate with a short life cycle","Discontinuous, clearly distinct characteristics","Perfect flowers allowing self-fertilisation","It has the largest genome of any plant"],ans:3,why:["That one IS a genuine reason.","Also a genuine reason — distinct traits like tall versus dwarf.","Also a genuine reason.","Correct — nobody chose peas for genome size. That answer is pure fiction."]},
+{t:"teach",board:["F1 selfed: 787 tall : 277 dwarf","= 2.84 : 1  ≈ 3:1","Dominant shows; recessive hides"],say:"He crossed tall plants with dwarf plants. Every F1 offspring was tall — so tallness is dominant. Then he let the F1 self-fertilise: of the F2, 787 were tall and 277 dwarf. A ratio of 2.84 to 1 — essentially three to one."},
+{t:"line",who:"oko",say:"Sir, why not exactly 3:1? Was Mendel careless?"},
+{t:"line",who:"lect",say:"Not careless — chance, Oko. Hold that thought until Scene 5, when we measure exactly how much chance is allowed."},
+{t:"q",who:"dumb",pre:"The tall one bullies the small one, sir. That one I know!",q:"Heterozygous individuals (Dd) show the tall phenotype because…",opts:["Dominance applies to the appearance of the trait in the heterozygous condition","The dwarf allele is destroyed inside the cell","Tall plants grow faster than dwarf plants","Dominance applies only in the homozygous condition"],ans:0,why:["Correct — dominance is about what SHOWS in the heterozygote.","The recessive allele is not destroyed — it hides, and reappears in the F2.","Growth rate is not the mechanism of dominance.","The opposite — dominance shows up in the heterozygote; homozygotes show only one allele's effect."]},
+{t:"q",who:"kofi",pre:"…*snorts awake*… segregation… I heard that in my dream…",q:"Mendel's principle of segregation states that…",opts:["Genes for different characters are inherited independently","Paired alleles separate from one another into different gametes","Dominant alleles always occur more often","Acquired traits are not inherited"],ans:1,why:["That is the law of INDEPENDENT ASSORTMENT — next scene. Kofi, your dream is ahead of the lecture.","Correct — allelic pairs separate, giving 'purity of gametes'.","Frequency has nothing to do with dominance.","That is just the failure of Lamarckism."]},
+{t:"q",who:"ama",pre:"2.84 to 1, sir! I calculated it myself!",q:"Mendel selfed 1064 F1 tall hybrids and classified the F2. The counts were…",opts:["787 tall and 277 dwarf — a 2.84:1 ratio","750 tall and 250 dwarf — exactly 3:1","556 tall and 556 dwarf — 1:1","315 tall and 108 dwarf — about 3:1"],ans:0,why:["Correct — 787:277 ≈ 2.84:1, essentially 3:1 with chance deviation.","That is the clean theoretical expectation, not Mendel's real counts.","That is a 1:1 — the TESTCROSS result, not the F2.","315 and 108 are from the DIHYBRID experiment, different cross."]},
+{t:"teach",board:["TESTCROSS: unknown x homozygous recessive","BACKCROSS: F1 x parent (or parent-like)","Testcross ALWAYS uses dd as one parent"],say:"To find an unknown genotype, cross it to a homozygous recessive — the testcross. If the F1 is crossed BACK to a parent or parent-like type, that is a backcross. The difference: the testcross always uses a recessive homozygote as one parent."},
+{t:"line",who:"jojo",say:"So the testcross is basically asking the recessive plant: 'excuse me, what are you hiding?'"},
+{t:"line",who:"lect",say:"The recessive parent reveals every hidden allele, Jojo. It is the most honest witness in genetics."},
+{t:"q",who:"efua",pre:"A testcross, sir — Dd crossed with dd, yes?",q:"Crossing an individual with UNKNOWN genotype to a homozygous recessive individual is called a…",opts:["Backcross","Monohybrid cross","Testcross","Reciprocal cross"],ans:2,why:["A backcross goes back to a PARENT — not necessarily recessive.","Monohybrid just means hybrid for one character.","Correct — the testcross reveals the hidden genotype.","A reciprocal cross swaps the sexes of the parents."]},
+{t:"scene",title:"Scene 4 · Independent Assortment & Dihybrid Crosses"},
+{t:"teach",board:["TWO traits at once: dihybrid","GgWw selfed -> 9 : 3 : 3 : 1","315 : 108 : 101 : 32 (556 seeds)"],say:"Now two characters at once — the dihybrid cross. Yellow versus green, round versus wrinkled. Mendel took 556 F2 seeds: 315 round-yellow, 108 round-green, 101 wrinkled-yellow, 32 wrinkled-green. A ratio of nine to three to three to one."},
+{t:"line",who:"ama",say:"And that ratio is just two monohybrid 3:1 crosses multiplied together, sir. The product rule. (3:1)² gives 9:3:3:1."},
+{t:"line",who:"lect",say:"Ama, at this rate you will teach the next class. Yes — the product rule of probability, operating in pea seeds."},
+{t:"q",who:"oko",pre:"Four gametes, sir! I counted them twice!",q:"The F1 dihybrid GgWw produces which gametes, and in what frequencies?",opts:["GW and gw only, equal","GW, Gw, gW, gw — in equal frequencies","GW, Gw, gW, gw — with GW most common","Only GW, because it is dominant"],ans:1,why:["Two gametes is what a MONOhybrid makes. The dihybrid makes four.","Correct — four types, equal frequencies. That is independent assortment.","Equal frequencies — dominance does not bias gamete production.","Every gamete carries one allele of each pair; dominance is beside the point."]},
+{t:"q",who:"efua",pre:"The product rule, sir — two 3:1 crosses multiplied.",q:"Mendel's 556 F2 dihybrid seeds split 315:108:101:32. This fits which ratio, and what rule predicts it?",opts:["3:1 — the addition rule","1:2:1 — the genotypic rule","9:3:3:1 — the product rule, (3:1)²","1:1:1:1 — the backcross rule"],ans:2,why:["The monohybrid ratio alone can't describe four phenotypic classes.","That is a monohybrid genotypic ratio.","Correct — two monohybrid 3:1 ratios operating together: (3+1)² = 9+3+3+1.","That ratio belongs to the dihybrid BACKCROSS, not the F2 self-cross."]},
+{t:"q",who:"kofi",pre:"Asleep again. *dreams in ratios*",q:"A dihybrid backcross (GgWw x ggww) gives a phenotypic ratio of…",opts:["9:3:3:1","3:1","1:1:1:1","1:2:1"],ans:2,why:["That is the F1 x F1 dihybrid ratio.","That is the monohybrid F2 ratio.","Correct — backcrossing to the full recessive parent gives all four phenotypes equally.","That is a monohybrid GENOTYPIC ratio."]},
+{t:"teach",board:["n heterozygous pairs:","gametes = 2^n   genotypes = 3^n","phenotypes = 2^n (dominance)"],say:"Here is the shortcut Mendel never had. For n heterozygous pairs of independent genes: kinds of gametes equal two to the n, F2 genotypes three to the n, and F2 phenotypes two to the n when dominance is present. One pair: 2, 3, 2. Two pairs: 4, 9, 4. Three pairs: 8, 27, 8."},
+{t:"line",who:"jojo",say:"So if I had TEN pairs, sir… 1024 gametes… that is a lot of…"},
+{t:"line",who:"lect",say:"…a lot of homework, Jojo. Which you will now do using the forked-line method."},
+{t:"q",who:"ama",pre:"Two to the n! Three to the n! I have a table for this, sir!",q:"For a trihybrid F1 (DdGgWw), how many kinds of gametes and F2 phenotypes are expected?",opts:["8 gametes, 8 phenotypes","6 gametes, 6 phenotypes","8 gametes, 4 phenotypes","4 gametes, 8 phenotypes"],ans:0,why:["Correct — 2³ = 8 gametes and, with dominance, 2³ = 8 phenotypes.","Six is not a power of two — impossible under this rule.","Gametes right, phenotypes wrong — 2³ is 8.","That is the dihybrid count."]},
+{t:"scene",title:"Scene 5 · Chi-Square — How Much Luck Is Allowed?"},
+{t:"teach",board:["Ratios are PREDICTIONS — chance deviates!","χ² = Σ (observed − expected)² / expected","df = n − 1"],say:"Last scene. Mendel's 3:1 and 9:3:3:1 are HYPOTHESES. Real data wobble — chance deviation. Toss four coins and you may get all heads. Toss a thousand and you will not. The smaller the sample, the bigger chance's impact. The chi-square test tells us whether our wobble is acceptable."},
+{t:"line",who:"oko",say:"Sir, so when our practical results don't match the ratio exactly, we might not have failed?"},
+{t:"line",who:"lect",say:"Precisely, Oko. The goodness of fit tells the geneticist how much the results may differ from the expectation and still be statistically close. Compute chi-square: sum of deviation squared, divided by expected, across all categories."},
+{t:"q",who:"dumb",pre:"Chi… is that the Chinese symbol, sir? I have seen it in movies!",q:"In a chi-square test, the degrees of freedom equal…",opts:["The number of categories, n","The sample size minus one","n − 1, where n is the number of categories","The number of offspring"],ans:2,why:["Almost — you must subtract one from it.","The sample size affects the test but not df directly.","Correct — for 3:1, n is 2, so df is 1; for 9:3:3:1, df is 3.","No. Chi-square is about categories, not head-counts."]},
+{t:"q",who:"jojo",pre:"I have a joke about deviation, sir, but it is off the expected value.",q:"Mendel counted 583, 195, 166 and 56 seeds in a dihybrid F2. The chi-square test measures…",opts:["Whether the deviations are large enough to reject the expected ratio","Whether Mendel counted correctly","The probability of the dominant allele winning","How many genes are involved"],ans:0,why:["Correct — the goodness of fit says if chance alone can explain the deviation.","Chi-square cannot audit the counter. He counted 556 seeds.","Alleles do not 'win' — this is not that kind of contest.","The ratio assumed the gene count already."]},
+{t:"q",who:"ama",pre:"For the monohybrid example: deviations of 10 and 10, sir!",q:"In the worked monohybrid example (1000 seeds), chi-square came out to 0.53 with df = 1. What does a SMALL chi-square value mean?",opts:["The experiment must be repeated","Observed data fit the expected ratio well — deviation is within chance","The sample size was too large","The genes are not segregating"],ans:1,why:["No need — the fit is good.","Correct — a small chi-square means chance alone comfortably explains the deviation.","There is no such thing as too large a sample here.","Segregation is exactly what produced the ratio being tested."]},
+{t:"q",who:"efua",pre:"Sir — may I take the last one?",q:"Why is it said that the organism is NOT preformed in the zygote?",opts:["Because the zygote contains a homunculus","Because development is differentiation and growth from genetic instructions","Because pangenes build the body part by part","Because acquired traits reshape the embryo"],ans:1,why:["The homunculus WAS the preformation claim — discredited.","Correct — the zygote holds instructions, and epigenesis described the gradual transformations.","Pangenesis was Darwin's lovely mistake.","That is Lamarckism twice removed."]},
+{t:"teach",board:["CLASS DISMISSED — read Klug, Brooker, Hartl","CA + midsem = 30% | End of sem = 70%","Next: chromosome number & abnormalities"],say:"And that is the pilot lecture. Read Klug, Brooker, and Hartl — the textbooks are not decoration. Your continuous assessment and midsemester carry thirty percent; the end-of-semester paper, seventy. Class dismissed."},
+{t:"line",who:"kofi",say:"…zzz… wait, what did I miss?…"},
+{t:"line",who:"jojo",say:"Only everything, Kofi."},
+];
+
+/* ============ CAST ============ */
+const CAST={
+ lect:{name:"Dr. Mensah (Lecturer)",role:"gregor",x:.72,y:.34,state:"idle"},
+ ama:{name:"Ama — Know-It-All",role:"ama",x:.16,y:.62,state:"hand"},
+ oko:{name:"Oko — The Worrier",role:"oko",x:.33,y:.62,state:"note"},
+ efua:{name:"Efua — The Calm One",role:"efua",x:.50,y:.62,state:"idle"},
+ jojo:{name:"Jojo — Class Clown",role:"locus",x:.67,y:.62,state:"wobble"},
+ dumb:{name:"Bisi — Confidently Wrong",role:"mira",x:.84,y:.62,state:"idle"},
+ kofi:{name:"Kofi — Asleep (as usual)",role:"player",x:.33,y:.86,state:"sleep"},
+};
+/* ============ ENGINE ============ */
+const $=id=>document.getElementById(id);
+const cv=$("cv"),cx=cv.getContext("2d");
+let W=0,H=0;
+function resize(){const r=cv.parentElement.getBoundingClientRect();cv.width=r.width*devicePixelRatio;cv.height=r.width*.55*devicePixelRatio;cv.style.height=(r.width*.55)+"px";W=r.width;H=r.width*.55;cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);}
+addEventListener("resize",resize);
+let beat=-1,playing=false,timer=null,zapped=[],score=0,asked=0,muted=false,t0=Date.now(),ttsOK=false;
+const totalQ=SCRIPT.filter(b=>b.t==="q").length;
+const sceneIdx=SCRIPT.map((b,i)=>b.t==="scene"?i:-1).filter(i=>i>=0);
+
+/* ---- stage renderer: classroom layout, proper stickmen, labels ---- */
+const SPEAKING={v:null};
+function limb(x1,y1,x2,y2){cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke();}
+function head(x,y,r,mood){
+ cx.beginPath();cx.arc(x,y,r,0,7);cx.stroke();
+ cx.lineWidth=1.6;
+ if(mood==="sleep"){limb(x-r*.45,y+r*.15,x-r*.1,y+r*.15);limb(x+r*.1,y+r*.15,x+r*.45,y+r*.15);}
+ else{cx.beginPath();cx.arc(x,y+r*.18,r*.42,.25,2.9);cx.stroke();}
+ cx.beginPath();cx.arc(x-r*.38,y-r*.22,r*.09,0,7);cx.fill();
+ cx.beginPath();cx.arc(x+r*.38,y-r*.22,r*.09,0,7);cx.fill();
+ cx.lineWidth=2.5;
+}
+function stickman(x,footY,u,pose,ph,mood){
+ const hy=footY-39*u, hip=footY-14*u, sh=footY-30*u;
+ const sway=Math.sin(ph/30+footY)*1.2;
+ limb(x+sway*.3,sh,x,hip);
+ limb(x,hip,x-6*u,footY);limb(x,hip,x+6*u,footY);
+ const aAmp=Math.sin(ph/14)*3;
+ if(pose==="hand"){limb(x,sh,x+9*u,sh-14*u-aAmp);limb(x,sh,x-7*u,sh+8*u);}
+ else if(pose==="write"){limb(x,sh,x+16*u,sh-6*u+Math.sin(ph/7)*2);limb(x,sh,x-6*u,sh+10*u);}
+ else if(pose==="point"){limb(x,sh,x-16*u,sh-2*u);limb(x,sh,x+6*u,sh+10*u);}
+ else if(pose==="note"){limb(x,sh,x+6*u,sh+9*u+Math.sin(ph/5)*1.5);limb(x,sh,x-6*u,sh+9*u+Math.cos(ph/5)*1.5);}
+ else if(pose==="fold"){limb(x,sh,x+8*u,sh+7*u);limb(x,sh,x-8*u,sh+7*u);}
+ else{limb(x,sh,x-7*u,sh+9*u);limb(x,sh,x+7*u,sh+9*u);}
+ head(x,hy,7*u,mood);
+}
+function drawStudent(key){
+ const c=CAST[key],x=c.x*W,ph=Date.now()-t0+key.charCodeAt(0)*7;
+ const u=W/95, deskY=H*.80;
+ cx.save();
+ if(c.state==="wobble")cx.translate(Math.sin(ph/9)*2,0);
+ const mood=(c.state==="sleep")?"sleep":"happy";
+ if(c.state==="sleep"){
+  limb(x-9*u,deskY-2*u,x+2*u,deskY-2*u);
+  head(x+6*u,deskY-4*u,6.5*u,"sleep");
+ }else{
+  stickman(x,deskY+2*u,u,c.state,ph,mood);
+ }
+ cx.restore();
+ cx.fillStyle="#3a2f16";cx.strokeStyle="#8a6d2f";cx.lineWidth=2;
+ cx.fillRect(x-16*u,deskY,32*u,3*u);cx.strokeRect(x-16*u,deskY,32*u,3*u);
+ cx.strokeStyle="#5a4a20";
+ limb(x-13*u,deskY+3*u,x-13*u,H*.95);limb(x+13*u,deskY+3*u,x+13*u,H*.95);
+ const speaking=SPEAKING.v===key;
+ cx.fillStyle=speaking?"#FEB704":"#a39a86";cx.font="700 "+(W*0.016)+"px Georgia";cx.textAlign="center";
+ cx.fillText(c.name.split(" \u2014 ")[0],x,H*.985);
+ cx.textAlign="left";
+}
+function draw(){
+ cx.clearRect(0,0,W,H);
+ const ph=Date.now()-t0;
+ const b=SCRIPT[beat]||{};
+ cx.fillStyle="#1c1c24";cx.fillRect(0,0,W,H);
+ cx.fillStyle="#2a2419";cx.fillRect(0,H*.72,W,H*.28);
+ cx.strokeStyle="#443823";cx.lineWidth=2;cx.beginPath();cx.moveTo(0,H*.72);cx.lineTo(W,H*.72);cx.stroke();
+ cx.fillStyle="#20261e";cx.strokeStyle="#8a6d2f";cx.lineWidth=5;
+ cx.fillRect(W*.025,H*.07,W*.56,H*.52);cx.strokeRect(W*.025,H*.07,W*.56,H*.52);
+ cx.fillStyle="#5a4a20";cx.fillRect(W*.025,H*.59,W*.56,H*.015);
+ cx.fillStyle="#F8F4ED";cx.font=(W*0.02)+"px Georgia";
+ (b.board||[]).forEach((line,i)=>{
+  const shown=(beatPlaying&&b.t==="teach")?line.slice(0,Math.max(0,Math.floor((Date.now()-t0Board)/45))):line;
+  cx.fillText(shown,W*.05,H*.16+i*H*.11);
+ });
+ const L=CAST.lect,lx=L.x*W,u=W/38;
+ const pose=(b.t==="teach"&&beatPlaying)?"write":(SPEAKING.v==="lect"?"gesture":"point");
+ stickman(lx,H*.70,u,pose,ph,"happy");
+ cx.fillStyle="#FEB704";cx.font="700 "+(W*0.017)+"px Georgia";cx.textAlign="center";
+ cx.fillText("DR. MENSAH",lx,H*.75);cx.textAlign="left";
+ if(SPEAKING.v){const sx=(SPEAKING.v==="lect"?lx:CAST[SPEAKING.v].x*W),sy=SPEAKING.v==="lect"?H*.70-46*u:H*.68;
+  cx.strokeStyle="#FEB704";cx.lineWidth=1.5;cx.globalAlpha=.5+Math.sin(ph/12)*.3;
+  cx.beginPath();cx.arc(sx,sy,W*.045,0,7);cx.stroke();cx.globalAlpha=1;cx.lineWidth=2.5;}
+ for(const k of ["ama","oko","efua","jojo","dumb","kofi"])drawStudent(k);
+ for(let i=zapped.length-1;i>=0;i--){zapped[i].a-=.004;if(zapped[i].a<=0)zapped.splice(i,1);}
+ requestAnimationFrame(draw);
+}
+let beatPlaying=false,t0Board=0;
+
+function say(who,text,cb){
+ SPEAKING.v=who;$("dlgName").textContent=CAST[who].name;
+ typeText($("dlgText"),text);
+ if(!muted&&ttsOK&&window.STUDYVERSE_TTS){try{STUDYVERSE_TTS.speak(CAST[who].role,text);}catch(e){}}
+ const dur=Math.max(2400,Math.min(9000,text.length*62));
+ timer=setTimeout(cb,dur);
+}
+function typeText(el,text){el.textContent="";let i=0;const iv=setInterval(()=>{el.textContent=text.slice(0,++i);if(i>=text.length)clearInterval(iv);},16);return iv;}
+function setState(k,st){CAST[k].state=st;}
+
+function playBeat(i){
+ if(timer){clearTimeout(timer);timer=null;}
+ beat=i;updateDots();
+ const b=SCRIPT[i];if(!b)return endScreen();
+ zapped=[];t0Board=Date.now();
+ if(b.t==="scene"){beatPlaying=true;$("dlgName").textContent="— "+b.title+" —";$("dlgText").textContent="";setState("lect","gesture");
+  timer=setTimeout(next,b.style==="pause"?1e12:2200);if(!b.style)playing&&0;}
+ else if(b.t==="teach"){beatPlaying=true;setState("lect","write");say("lect",b.say,next);}
+ else if(b.t==="line"){beatPlaying=true;const st={ama:"hand",jojo:"wobble",kofi:"sleep"}[b.who]||"note";setState(b.who,st);
+  setTimeout(()=>setState(b.who,{ama:"hand",oko:"note",efua:"idle",jojo:"wobble",kofi:"sleep"}[b.who]||"idle"),3200);
+  say(b.who,b.say,next);}
+ else if(b.t==="q"){beatPlaying=true;askQuestion(b);}
+ $("bPrev").disabled=i===0;$("bNext").disabled=false;$("bRestart").disabled=false;
+}
+function zzz(){if(beatPlaying&&CAST.kofi.state==="sleep"&&zapped.length<3&&Math.random()<.02)zapped.push({x:CAST.kofi.x*W+14*(W/95),y:H*.79,a:1});requestAnimationFrame(zzz);}
+function next(){if(beat>=SCRIPT.length-1)return endScreen();playBeat(beat+1);}
+function prev(){if(beat>0)playBeat(beat-1);}
+function updateDots(){$("dots").innerHTML="";sceneIdx.forEach((si,n)=>{const d=document.createElement("button");d.className="dot"+((beat>=si&&(n===sceneIdx.length-1||beat<sceneIdx[n+1]))?" on":"");d.title=SCRIPT[si].title;d.onclick=()=>{closeQ();playBeat(si);};$("dots").appendChild(d);});}
+
+function askQuestion(b){
+ asked++;setState("lect","point");
+ say(b.who,b.pre,()=>{ // the called-on student gives a (wrong/funny) pre-answer, then it's YOUR turn
+  const ov=$("qov");ov.classList.add("show");
+  $("qwho").textContent=b.who==="kofi"?"Kofi wakes up — the lecturer sighs — and turns to YOU:":("The lecturer turns to the class. YOUR turn:");
+  $("qtext").textContent=b.q;
+  $("qwhy").textContent="";$("qnext").style.display="none";
+  const box=$("qopts");box.innerHTML="";
+  const order=b.opts.map((t,i)=>i);
+  order.forEach((oi,k)=>{
+   const btn=document.createElement("button");btn.className="opt";
+   btn.innerHTML="<b>"+"ABCD"[k]+"</b>. "+esc(oi!==undefined?b.opts[oi]:"");
+   btn.onclick=()=>{answer(b,oi,btn);};box.appendChild(btn);
+  });
+ });
+}
+function esc(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML;}
+function answer(b,oi,btn){
+ const ok=oi===b.ans;
+ if(ok)score++;
+ $("score-pill").textContent="✋ "+score+"/"+totalQ;
+ [...$("qopts").children].forEach((c,k)=>{c.disabled=true;if(k===b.ans)c.classList.add("ok");else if(c===btn)c.classList.add("no");});
+ $("qwhy").textContent=(ok?"✔ ":"✘ ")+b.why[b.ans];
+ $("qnext").style.display="inline-block";
+ $("qnext").onclick=()=>{closeQ();react(b,ok);};
+ if(!muted&&ttsOK&&window.STUDYVERSE_TTS){try{STUDYVERSE_TTS.speak(ok?"ama":"warden",ok?"Correct!":(b.who==="kofi"?"He was asleep. As usual.":"Not quite."));}catch(e){}}
+}
+function react(b,ok){
+ setState("lect","gesture");
+ const line=ok?[b.who==="ama"?"Of course Ama agrees. Moving on.":"Good. The class is learning."]:
+   [b.who==="kofi"?"Maybe wake up BEFORE the exam, Kofi.":"Note the explanation. It will be in the CA."];
+ say("lect",line,next);
+}
+function closeQ(){$("qov").classList.remove("show");}
+function endScreen(){
+ beatPlaying=false;playing=false;
+ $("dlgName").textContent="— End of the pilot lecture —";
+ typeText($("dlgText"),"Class participation: "+score+" of "+totalQ+" correct. "+
+  (score>=16?"Dr. Mensah is impressed. Ama demands a harder question set.":score>=10?"Solid. Oko finally stopped shaking.":"Kofi scored "+(Math.random()<.5?"higher":"lower")+" in his sleep. Re-run the scenes!"));
+ $("bNext").disabled=true;$("bRestart").disabled=false;
+ setState("kofi","sleep");zapped=[];
+}
+/* controls */
+$("bStart").onclick=()=>{["bPrev","bNext","bPause","bRestart"].forEach(k=>$(k).disabled=false);$("bStart").disabled=true;
+ if(window.STUDYVERSE_TTS&&STUDYVERSE_TTS.ready){STUDYVERSE_TTS.ready().then(ok=>{ttsOK=!!ok;
+  $("ttsState").textContent=ok?"🔊 Voices live (server TTS)":"🔇 No server TTS — speech bubbles only";});}
+ playBeat(0);};
+$("bNext").onclick=()=>{if(!$("qov").classList.contains("show"))next();};
+$("bPrev").onclick=()=>{closeQ();prev();};
+$("bPause").onclick=function(){playing=!playing;this.textContent=playing?"▶ Paused":"⏸ Auto";};
+$("bMute").onclick=function(){muted=!muted;this.textContent=muted?"🔇 Voice off":"🔊 Voice on";if(muted&&window.STUDYVERSE_TTS&&STUDYVERSE_TTS.stop)try{STUDYVERSE_TTS.stop()}catch(e){}};
+$("bRestart").onclick=()=>{score=0;asked=0;$("score-pill").textContent="✋ 0/"+totalQ;closeQ();playBeat(0);};
+$("dlg").onclick=()=>{if(!$("qov").classList.contains("show"))next();};
+resize();draw();zzz();updateDots();
+$("dlgName").textContent="— Welcome —";
+typeText($("dlgText"),"Six characters. Five scenes. Twenty questions. Press “Enter the classroom” to begin. Tap the dialogue box or Next to advance if auto-play lags.");
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Carpe Diem — Global Leaderboard Setup Walkthrough</title>
+<style>
+@page{size:A4;margin:14mm 13mm}
+body{font-family:"Segoe UI",Georgia,serif;color:#2b2419;line-height:1.5;margin:0}
+.c{text-align:center}
+h1{font-size:1.8rem;margin:.2em 0 .1em;color:#8a6d1d}
+.sub{letter-spacing:.14em;font-size:.72rem;color:#8b8171;text-transform:uppercase}
+h2{color:#8a6d1d;border-bottom:2px solid #e3d7b8;padding-bottom:.15em;font-size:1.12rem;margin:1.4em 0 .5em}
+.card{background:#fff;border:1px solid #ecdcae;border-radius:8px;padding:10px 14px;margin:.55em 0;page-break-inside:avoid}
+.tip{background:#f2ede0;border-left:4px solid #b0933e;border-radius:4px;padding:8px 12px;margin:.6em 0;font-size:.92em}
+.warn{background:#f7ece7;border-left:4px solid #b0532f;border-radius:4px;padding:8px 12px;margin:.6em 0;font-size:.92em}
+table{border-collapse:collapse;width:100%;font-size:.9em;margin:.5em 0}
+th,td{border:1px solid #e3d7b8;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#f2ede0;color:#6b5a2e}
+kbd{background:#eee6cf;border:1px solid #d8c896;border-radius:4px;padding:0 5px;font-size:.85em}
+.btn{display:inline-block;background:#fff;border:1px solid #b0933e;border-radius:20px;padding:2px 12px;font-size:.85em;color:#6b5a2e}
+.code{font-family:Consolas,monospace;font-size:.85em;background:#fff8e8;border:1px solid #e3d7b8;border-radius:6px;padding:8px 10px;white-space:pre-wrap;page-break-inside:avoid}
+ol.steps li{margin:.35em 0}
+.foot{text-align:center;color:#8b8171;font-size:.8rem;margin-top:2.2em;letter-spacing:.05em}
+.gold{color:#8a6d1d;font-weight:700}
+</style></head><body>
+
+<div class="c"><h1>Carpe Diem — Global Leaderboard Setup</h1>
+<div class="sub">one-time setup · ~15 minutes · powered by kingfahd pappoe</div>
+<div style="color:#8b8171;font-size:.85rem;margin-top:.4em">Backend: Google Apps Script (free, uses your own Google account)<br>Applies to: CarpeDiem_Genetics_MegaQuiz.html</div></div>
+
+<h2>What you're building</h2>
+<div class="card">Right now scores are saved <b>only on this device</b> (browser localStorage). This walkthrough connects the quiz to a free Google Sheet backend, so anyone with the quiz file — anywhere — posts their scores to one shared, permanent log and sees one shared top-10 per module.</div>
+<table>
+<tr><th>Before</th><th>After</th></tr>
+<tr><td>Board lives in the browser's localStorage</td><td>Every submission is appended to a Google Sheet row (permanent log)</td></tr>
+<tr><td>Nothing to install, but scores can't be shared</td><td>Quiz displays the sheet's top-10 on the results + leaderboard screens</td></tr>
+<tr><td>No internet needed</td><td>Still works offline — the board just says it can't reach the sheet without internet</td></tr>
+</table>
+<div class="tip"><b>Prerequisites:</b> a Google account, internet, and the files in <b>The carpe Diem Engine</b> folder. Nothing is paid; Apps Script + Sheets are free.</div>
+
+<h2 class="pb">Part 1 · Create the backend (Google Sheet + script)</h2>
+<ol class="steps">
+<li>Open <span class="btn">sheets.new</span> in your browser — it creates a brand-new empty Google Sheet. Name it <i>Carpe Diem Leaderboard</i> (cosmetic, any name works).</li>
+<li>Menu: <b>Extensions → Apps Script</b>. A script editor opens, attached to this sheet.</li>
+<li>Delete the sample <code>function myFunction()</code> code entirely.</li>
+<li>Open <b>leaderboard_apps_script.gs</b> (in your Engine folder), select <b>everything</b> (Ctrl+A), copy (Ctrl+C), and paste it into the editor (Ctrl+V). The file contains the POST handler (writes rows) and a JSONP GET handler (reads top-10) — leave it untouched.</li>
+<li>Press <kbd>Ctrl+S</kbd>. Name the project e.g. <i>CD Leaderboard</i>.</li>
+</ol>
+
+<h2>Part 2 · Deploy it as a public web app</h2>
+<ol class="steps">
+<li>Top-right: <b>Deploy → New deployment</b>.</li>
+<li>Click the gear next to "select type" and choose <b>Web app</b>.</li>
+<li>Set these two — they're the settings everyone gets wrong:
+<table>
+<tr><th>Setting</th><th>Choose</th><th>Why</th></tr>
+<tr><td><b>Execute as</b></td><td><b>Me (you)</b></td><td>Rows are written into your sheet under your account.</td></tr>
+<tr><td><b>Who has access</b></td><td><b>Anyone</b></td><td>Classmates' browsers must be able to post scores without logging in.</td></tr>
+</table></li>
+<li>Description can say <i>Carpe Diem leaderboard v1</i>. Click <b>Deploy</b>.</li>
+<li><b>Authorise</b> your account when asked. The "Google hasn't verified this app" warning is normal for your own private script — click <b>Advanced → Go to Carpe Diem Leaderboard (unsafe) → Allow</b>.</li>
+<li>Deploy done → <b>copy the Web app URL</b>. It ends in <code>/exec</code>. That URL is your <b>LEADERBOARD_URL</b>. Keep it; share it — classmates don't need the sheet, just the quiz.</li>
+</ol>
+<div class="warn">If you ever edit the .gs code later, you must <b>Deploy → Manage deployments → Edit → New version</b>, otherwise changes don't take effect.</div>
+
+<h2>Part 3 · Wire the URL into the quiz</h2>
+<div class="card">In <b>build_genetics_megaquiz.py</b>, find the config block (around line 326) and paste your URL:</div>
+<div class="code">bank = {
+    "config": {
+        "title": "The Carpe Diem Genetics - Modules 1-9",
+        "leaderboard_url": "PASTE-YOUR-/exec-URL-HERE",   # was ""
+        ...</div>
+<div class="card">Then rebuild (from the Engine folder, in a terminal):<br>
+<kbd>python build_genetics_megaquiz.py build</kbd> &nbsp;then&nbsp; <kbd>node check_genetics_megaquiz.js</kbd><br>
+This bakes the URL into the quiz's data. Remember: the quiz HTML already chosen/being shared must be the <b>rebuilt</b> one.</div>
+
+<h2>Part 4 · Test it (epoch of truth)</h2>
+<ol class="steps">
+<li><b>Smoke the API alone:</b> paste in a browser: <code>YOUR-URL?do=top&amp;quiz=BIOL%20153&amp;callback=cdLB</code> — you should get something like <code>cdLB({"ok":true,"top":[]})</code>.</li>
+<li><b>Play one short section</b> of the quiz to the end (16-question sections are quick), finish it, and enter a nickname on the results screen.</li>
+<li><b>Check the sheet:</b> the <i>Scores</i> tab should auto-appear with a row: Timestamp | Quiz | Nickname | Score | Percent | Mode | Duration.</li>
+<li><b>Check the quiz:</b> the results screen now shows the <b>global board</b> card with your name on it; the Leaderboard screen gains the shared ranking.</li>
+</ol>
+
+<h2>Troubleshooting</h2>
+<table>
+<tr><th>Symptom</th><th>Fix</th></tr>
+<tr><td>Board says it can't reach the sheet</td><td>Check the /exec URL is pasted exactly (ends in /exec, not /dev), saved, and the quiz rebuilt.</td></tr>
+<tr><td>Popup says "Google hasn't verified this app"</td><td>Normal for personal scripts. <b>Advanced → Go to … (unsafe) → Allow.</b></td></tr>
+<tr><td>Edits to the script don't take effect</td><td>Create a <b>new version</b> in Manage deployments (see Part 2 warning).</td></tr>
+<tr><td>Scores appear once, then stop</td><td>Log has a 100,000-row safety cap in the script; unlikely — otherwise check the Sheet's own storage.</td></tr>
+<tr><td>"Authorization required" on a friend's device</td><td>Access must be <b>Anyone</b>; redeploy with the right audience.</td></tr>
+<tr><td>Want to reset the board</td><td>Delete rows in the Scores tab (the tab itself is auto-recreated)</td></tr>
+</table>
+
+<div class="foot">Carpe Diem Engine · leaderboard_apps_script.gs is the backend source — don't edit unless you cloned it<br><span class="gold">Carpe diem.</span> Seize the board.</div>
+
+</body></html>

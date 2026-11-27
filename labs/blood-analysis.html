@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HESA Lab — Blood Analysis (Extraction-Ready)</title>
+<style>
+:root{
+  --ink:#1b2430; --muted:#6b7787; --bg:#f4f6f9; --card:#fff; --line:#dde3ea;
+  --blue:#0b4a8f; --blue-soft:#e8f0fa; --gold:#f2b024; --red:#c0392b; --green:#1e8e5a; --green-soft:#e6f4ea;
+  --lav:#8e6bbf; --grey:#8a939e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;padding-bottom:40px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px}
+header.top{background:linear-gradient(120deg,var(--blue),#0a356b);color:#fff;border-radius:0 0 14px 14px;padding:18px 24px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+header.top h1{font-size:22px}
+header.top .sub{font-size:13px;opacity:.85}
+.badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700}
+.phase-bar{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}
+.phase{flex:1;min-width:130px;padding:10px 14px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-weight:700;font-size:14px;color:var(--muted);text-align:center}
+.phase.on{background:var(--blue-soft);color:var(--blue);border-color:var(--blue)}
+.phase.done{color:var(--green)}
+.grid{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:18px}
+.panel h2{font-size:17px;margin-bottom:4px}
+.panel .hint{font-size:13px;color:var(--muted);margin-bottom:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:14px;cursor:pointer;transition:.15s}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:#0d5cae}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#4a3608}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.pt-row{display:flex;flex-wrap:wrap;gap:10px}
+.pt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;min-width:150px;background:#fff;transition:.15s}
+.pt:hover{border-color:var(--blue)}
+.pt.sel{border-color:var(--blue);background:var(--blue-soft);box-shadow:0 0 0 2px var(--blue-soft)}
+.pt b{display:block;font-size:14px}
+.pt span{font-size:12px;color:var(--muted)}
+.tubes{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.tube{display:flex;flex-direction:column;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;min-width:96px;background:#fff}
+.tube .cap{width:44px;height:16px;border-radius:6px 6px 3px 3px}
+.tube .body{width:30px;height:58px;border:1.5px solid #b9c2cc;border-radius:4px 4px 10px 10px;background:linear-gradient(#f8f9fb 60%,#eef1f4)}
+.tube small{font-size:11px;text-align:center;color:var(--muted);line-height:1.25}
+.tube.sel{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.spin-ui{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin:12px 0}
+.field{display:grid;gap:4px}
+.field label{font-size:12.5px;font-weight:700;color:var(--blue)}
+.field input{width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+.rotor{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#3a4656 30%,#1c2431 70%);margin:8px auto;position:relative;box-shadow:inset 0 0 24px rgba(0,0,0,.6)}
+.rotor .arm{position:absolute;left:50%;top:50%;width:58%;height:7px;background:#cfd6de;border-radius:4px;transform-origin:left center;transform:translateY(-50%) rotate(0deg)}
+.rotor.spinning .arm{animation:spin .35s linear infinite}
+@keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
+.tube3{width:64px;margin:14px auto;border:1.5px solid #b9c2cc;border-radius:5px 5px 12px 12px;height:150px;overflow:hidden;display:flex;flex-direction:column-reverse;box-shadow:0 3px 8px rgba(0,0,0,.12)}
+.layer{width:100%}
+.assay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.assay{border:1px solid var(--line);border-radius:10px;padding:14px}
+.assay h3{font-size:14.5px;margin-bottom:8px}
+.assay input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;margin-bottom:8px}
+.agglut{display:flex;gap:8px;margin-top:6px}
+.well{flex:1;height:44px;border-radius:50%;border:1.5px solid #b9c2cc;background:#fdeaea;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
+.well.agg{background:#8b1a12;color:#fff;box-shadow:inset 0 0 10px rgba(0,0,0,.35)}
+.well.agg::after{content:""}
+.readout{background:var(--green-soft);border:1px solid #bfe3cd;border-radius:8px;padding:10px 12px;font-size:13.5px;margin-top:10px}
+.warn{background:#fdf0e7;border:1px solid #f3d3b8;color:#8a4b12;border-radius:8px;padding:10px 12px;font-size:13.5px;margin-top:10px}
+.side{position:sticky;top:16px}
+#log{max-height:260px;overflow-y:auto;font-family:Consolas,monospace;font-size:11.5px;background:#10161f;color:#c9d6e4;border-radius:10px;padding:12px;display:grid;gap:3px}
+#log .e{display:grid;grid-template-columns:auto 1fr;gap:8px}
+#log .t{color:#6fa8dc;white-space:nowrap}
+#log .warnx{color:#f2b024}
+#log .errx{color:#ff8f7a}
+pre#snapshot{max-height:260px;overflow:auto;font-size:10.5px;background:#10161f;color:#9fe0b7;border-radius:10px;padding:12px;white-space:pre-wrap;word-break:break-word}
+.diag-item{display:grid;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:8px;font-size:13.5px}
+.diag-item b{display:flex;justify-content:space-between}
+footer{margin-top:26px;text-align:center;font-size:12px;color:var(--muted)}
+kbd{background:#eef1f4;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><h1>HESA Virtual Lab — Blood Analysis</h1><div class="sub">No login · pure HTML · every action emits extraction events for the diagnosis engine</div></div>
+  <span class="badge">TEMPLATE v1</span>
+</header>
+
+<div class="wrap">
+  <div class="phase-bar">
+    <div class="phase on" data-ph="intake">1 · Intake</div>
+    <div class="phase" data-ph="draw">2 · Blood Draw</div>
+    <div class="phase" data-ph="spin">3 · Centrifuge</div>
+    <div class="phase" data-ph="assay">4 · Assays</div>
+    <div class="phase" data-ph="diagnosis">5 · Diagnosis</div>
+  </div>
+
+  <div class="grid">
+    <div><!-- MAIN COLUMN -->
+
+      <div class="panel" id="p-intake">
+        <h2>Patient Intake</h2>
+        <div class="hint">Select a patient to admit. Ground-truth physiology is generated but hidden (visible via <kbd>HEXA_BUS.truth()</kbd> or <kbd>?debug=1</kbd>).</div>
+        <div class="pt-row" id="patients"></div>
+      </div>
+
+      <div class="panel" id="p-draw" hidden>
+        <h2>Step 1 — Venipuncture (Blood Draw)</h2>
+        <div class="hint">Pick the correct evacuated tube for the ordered panel, then draw 10&nbsp;mL.</div>
+        <div class="tubes" id="tubes"></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn gold" id="btn-draw">🩸 Draw blood (10 mL)</button>
+          <span class="hint" style="margin:0" id="draw-msg"></span>
+        </div>
+        <div id="draw-out"></div>
+      </div>
+
+      <div class="panel" id="p-spin" hidden>
+        <h2>Step 2 — Centrifugation</h2>
+        <div class="hint">Spin the sample. Whole blood separates into plasma / buffy coat / packed RBCs. Proper separation needs roughly ≥ 1,500 × g for ≥ 5 minutes.</div>
+        <div class="spin-ui">
+          <div class="field"><label>RPM</label><input type="number" id="rpm" value="4000" min="500" max="15000" step="100"></div>
+          <div class="field"><label>Time (min)</label><input type="number" id="mins" value="5" min="1" max="20" step="1"></div>
+          <button class="btn primary" id="btn-spin">▶ Start centrifuge</button>
+          <span class="hint" style="margin:0" id="g-note"></span>
+        </div>
+        <div class="rotor" id="rotor"><div class="arm"></div></div>
+        <div id="spin-out"></div>
+      </div>
+
+      <div class="panel" id="p-assay" hidden>
+        <h2>Step 3 — Assays</h2>
+        <div class="hint">Read each result off the instrument / manual method and record it. Values you record feed the diagnosis engine.</div>
+        <div class="assay-grid">
+          <div class="assay">
+            <h3>🧪 Hematocrit (micro-capillary, %PCV)</h3>
+            <input id="a-hct" type="number" min="0" max="100" step="0.1" placeholder="e.g. 42.0">
+            <div class="hint">Read packed-cell column height ÷ total column × 100</div>
+          </div>
+          <div class="assay">
+            <h3>🩸 Hemoglobin (g/dL)</h3>
+            <input id="a-hb" type="number" min="0" max="30" step="0.1" placeholder="e.g. 14.0">
+            <div class="hint">Cyanmethemoglobin method</div>
+          </div>
+          <div class="assay">
+            <h3>🧫 WBC count (×10⁹/L)</h3>
+            <input id="a-wbc" type="number" min="0" max="100" step="0.1" placeholder="e.g. 6.5">
+            <div class="hint">Improved Neubauer chamber</div>
+          </div>
+          <div class="assay">
+            <h3>🌡️ ESR (mm/hr — Westergren)</h3>
+            <input id="a-esr" type="number" min="0" max="120" step="1" placeholder="e.g. 10">
+            <div class="hint">Requires citrate (blue) tube</div>
+          </div>
+          <div class="assay">
+            <h3>🧈 Serum cholesterol (mg/dL)</h3>
+            <input id="a-chol" type="number" min="0" max="600" step="1" placeholder="e.g. 180">
+            <div class="hint">Requires plain (red) tube — serum</div>
+          </div>
+          <div class="assay">
+            <h3>🔎 Blood typing (click a well if agglutinated)</h3>
+            <div class="agglut">
+              <div class="well" data-anti="A">Anti-A</div>
+              <div class="well" data-anti="B">Anti-B</div>
+              <div class="well" data-anti="D">Anti-D</div>
+            </div>
+            <div class="readout" id="type-out" style="margin-top:8px">Not yet interpreted.</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn primary" id="btn-assay-done">✔ Record all & run diagnosis</button>
+        </div>
+      </div>
+
+      <div class="panel" id="p-diagnosis" hidden>
+        <h2>Step 4 — Diagnosis Engine Output</h2>
+        <div class="hint">Rule-based demo inference over the recorded results. The same <code>HEXA_BUS.diagnosis</code> object is what the real engine will consume.</div>
+        <div id="diag-out"></div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" id="btn-export">⬇ Export session JSON</button>
+          <button class="btn" id="btn-reset">↺ New session</button>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+
+    <div class="side">
+      <div class="panel">
+        <h2>🛠 Extraction bus</h2>
+        <div class="hint">Live event stream — this is the machine-readable trace the diagnosis engine ingests.</div>
+        <div id="log"></div>
+      </div>
+      <div class="panel">
+        <h2>📡 State snapshot</h2>
+        <div class="hint">Full state, always available via <kbd>HEXA_BUS.snapshot()</kbd>, <kbd>window.postMessage</kbd>, or the export button.</div>
+        <pre id="snapshot"></pre>
+      </div>
+    </div>
+  </div>
+
+  <footer>HESA Lab Template · single-file · no auth · diagnosis-engine hooks: HEXA_BUS.snapshot() / HEXA_BUS.truth() / postMessage("hexa:get") / ?debug=1</footer>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   HESA EXTRACTION BUS — the contract with the diagnosis engine
+   ------------------------------------------------------------
+   HEXA_BUS.snapshot()  → full machine-readable session state
+   HEXA_BUS.truth()     → ground-truth patient physiology (grader)
+   HEXA_BUS.log()       → append-only event trace
+   postMessage          → parent frames can pull state:
+                          iframe.contentWindow.postMessage({type:"hexa:get"},"*")
+                          reply: {type:"hexa:state", payload:snapshot}
+   URL seeds: ?debug=1  ?patient=pt-03
+   ============================================================ */
+(function(){
+  const BUS = { events:[], started: Date.now(), ts(){ return ((Date.now()-BUS.started)/1000).toFixed(1)+"s"; } };
+  function log(type, detail, level){
+    const e = { t: BUS.ts(), type, detail, level: level||"info" };
+    BUS.events.push(e); renderLog(e);
+  }
+  function renderLog(e){
+    const el = document.getElementById("log");
+    const row = document.createElement("div"); row.className = "e";
+    const cls = e.level==="warn"?"warnx":e.level==="error"?"errx":"";
+    row.innerHTML = `<span class="t">${e.t}</span><span class="${cls}">${e.type} · ${escapeHtml(JSON.stringify(e.detail))}</span>`;
+    el.appendChild(row); el.scrollTop = el.scrollHeight;
+  }
+  function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+  /* ---------------- patients with hidden ground truth ---------------- */
+  const PATIENTS = [
+    { id:"pt-01", name:"Ama Mensah",  age:21, sex:"F", chief:"Routine pre-clinic screen",
+      truth:{ hct:41.5, hb:13.6, wbc:6.2, esr:8, chol:172, abo:"O", rh:"+", condition:"Normal" } },
+    { id:"pt-02", name:"Kwesi Boateng", age:24, sex:"M", chief:"Fatigue, pallor, dizziness",
+      truth:{ hct:28.0, hb:9.1, wbc:7.4, esr:14, chol:141, abo:"A", rh:"+", condition:"Iron-deficiency anemia" } },
+    { id:"pt-03", name:"Efua Owusu", age:27, sex:"F", chief:"Fever, sore throat 3 days",
+      truth:{ hct:39.0, hb:12.8, wbc:14.8, esr:38, chol:160, abo:"B", rh:"+", condition:"Acute bacterial infection (leukocytosis)" } },
+    { id:"pt-04", name:"Yaw Darko", age:23, sex:"M", chief:"Headache, flushed face",
+      truth:{ hct:57.0, hb:18.4, wbc:7.0, esr:4, chol:188, abo:"AB", rh:"-", condition:"Polycythemia (relative — dehydration)" } },
+    { id:"pt-05", name:"Adjoa Sarpong", age:22, sex:"F", chief:"Routine screen, family history of heart disease",
+      truth:{ hct:40.2, hb:13.1, wbc:5.8, esr:9, chol:268, abo:"O", rh:"+", condition:"Hypercholesterolemia" } },
+    { id:"pt-06", name:"Kojo Antwi", age:26, sex:"M", chief:"Post-transfusion follow-up",
+      truth:{ hct:36.5, hb:12.0, wbc:6.6, esr:11, chol:175, abo:"A", rh:"-", condition:"Normal (A−, monitor crossmatch)" } }
+  ];
+
+  const TUBES = [
+    { id:"lav", label:"Lavender — EDTA",  color:"#8e6bbf", accepts:["hct","hb","wbc","typing"] },
+    { id:"red", label:"Red — Plain (serum)", color:"#c0392b", accepts:["chol"] },
+    { id:"blue",label:"Blue — Citrate",   color:"#4a90d9", accepts:["esr"] },
+    { id:"green",label:"Green — Heparin", color:"#1e8e5a", accepts:[] }
+  ];
+
+  /* ---------------- session state ---------------- */
+  let S = null;
+  function newSession(patient){
+    S = {
+      session: { id: "hesa-"+Date.now().toString(36), template:"blood-analysis-v1", started: new Date().toISOString() },
+      patient: { id:patient.id, name:patient.name, age:patient.age, sex:patient.sex, chief:patient.chief },
+      truth: JSON.parse(JSON.stringify(patient.truth)),   // extraction: ground truth for the grader
+      draw: {},   // tube, volume, quality, events
+      spin: {},   // rpm, mins, g, adequate, separation
+      assays: { hct:null, hb:null, wbc:null, esr:null, chol:null, typing:{A:false,B:false,D:false} },
+      tubeFit: {},   // which assays are valid on the tube drawn
+      diagnosis: null
+    };
+    document.getElementById("snapshot");
+  }
+
+  /* ---------------- phase navigation ---------------- */
+  const PHASES = ["intake","draw","spin","assay","diagnosis"];
+  function goto(phase){
+    PHASES.forEach(p=>{
+      document.getElementById("p-"+p).hidden = (p!==phase);
+      const ph = document.querySelector(`.phase[data-ph="${p}"]`);
+      ph.classList.toggle("on", p===phase);
+      ph.classList.toggle("done", PHASES.indexOf(p)<PHASES.indexOf(phase));
+    });
+    log("phase", {to: phase});
+  }
+
+  /* ---------------- intake ---------------- */
+  let picked = null;
+  const ptBox = document.getElementById("patients");
+  PATIENTS.forEach(p=>{
+    const d = document.createElement("div"); d.className="pt"; d.innerHTML = `<b>${p.name}</b><span>${p.age} · ${p.sex} · ${p.chief}</span>`;
+    d.onclick = ()=>{ document.querySelectorAll(".pt").forEach(x=>x.classList.remove("sel")); d.classList.add("sel"); picked=p; };
+    ptBox.appendChild(d);
+  });
+  document.getElementById("btn-admit") ; // (intake confirms via draw panel auto-start below)
+  const admitBtn = document.createElement("button");
+  admitBtn.className="btn primary"; admitBtn.textContent="Admit & proceed to draw"; admitBtn.style.marginTop="12px";
+  admitBtn.onclick = ()=>{
+    if(!picked){ log("intake_error",{msg:"no patient selected"},"error"); alert("Select a patient first."); return; }
+    newSession(picked); renderSnapshot();
+    log("intake", {patient:picked.id, chief:picked.chief});
+    goto("draw");
+  };
+  document.getElementById("p-intake").appendChild(admitBtn);
+
+  /* ---------------- draw ---------------- */
+  let tubeSel = null;
+  const tubeBox = document.getElementById("tubes");
+  TUBES.forEach(t=>{
+    const d=document.createElement("div"); d.className="tube";
+    d.innerHTML = `<span class="cap" style="background:${t.color}"></span><span class="body"></span><small>${t.label}</small>`;
+    d.onclick=()=>{ document.querySelectorAll(".tube").forEach(x=>x.classList.remove("sel")); d.classList.add("sel"); tubeSel=t;
+      document.getElementById("draw-msg").textContent = "Selected: "+t.label; };
+    tubeBox.appendChild(d);
+  });
+  document.getElementById("btn-draw").onclick = ()=>{
+    if(!tubeSel){ document.getElementById("draw-msg").textContent="Pick a tube first."; log("draw_error",{msg:"no tube selected"},"error"); return; }
+    const fits = tubeSel.accepts;
+    S.draw = { tube: tubeSel.id, tubeLabel: tubeSel.label, volume_mL: 10, quality: "good", fits };
+    S.tubeFit = {};
+    Object.keys(S.truth).forEach(k=>{ if(["hct","hb","wbc","esr","chol","abo","rh"].includes(k)) S.tubeFit[k] = fits.includes(k==="abo"||k==="rh"?"typing":k); });
+    const ok = fits.length>0;
+    document.getElementById("draw-out").innerHTML = ok
+      ? `<div class="readout">✔ 10 mL drawn into ${tubeSel.label}. Valid assays on this tube: ${fits.join(", ")||"none"}</div>`
+      : `<div class="warn">✖ ${tubeSel.label} is not appropriate for the ordered panel — downstream results will be flagged invalid.</div>`;
+    log("draw", {tube:tubeSel.id, volume_mL:10, valid_assays:fits, appropriate: ok}, ok?"info":"warn");
+    renderSnapshot();
+    goto("spin");
+  };
+
+  /* ---------------- centrifuge ---------------- */
+  const rotor = document.getElementById("rotor");
+  document.getElementById("rpm").addEventListener("input", gNote);
+  document.getElementById("mins").addEventListener("input", gNote);
+  function gNote(){
+    const r=+document.getElementById("rpm").value, d=9.5; // rotor radius cm (approx)
+    const g = r ? Math.round(1.118e-5 * r*r * d) : 0;
+    document.getElementById("g-note").textContent = `≈ ${g.toLocaleString()} × g`;
+    return g;
+  }
+  document.getElementById("btn-spin").onclick = ()=>{
+    const rpm=+document.getElementById("rpm").value, mins=+document.getElementById("mins").value, g=gNote();
+    rotor.classList.add("spinning");
+    log("centrifuge_start", {rpm, minutes:mins, g});
+    setTimeout(()=>{
+      rotor.classList.remove("spinning");
+      const adequate = g>=1500 && mins>=5;
+      S.spin = { rpm, minutes: mins, g, adequate };
+      const out = document.getElementById("spin-out");
+      if(adequate){
+        const hct = S.truth.hct;
+        const pct = Math.min(70, Math.max(20, hct));
+        out.innerHTML = `<div class="tube3">
+            <div class="layer" style="height:${100-pct-3}%;background:linear-gradient(#f7e9a0,#eeda88)"></div>
+            <div class="layer" style="height:3%;background:#e8e2d2"></div>
+            <div class="layer" style="height:${pct}%;background:linear-gradient(#7d1f14,#a52a1a)"></div>
+          </div>
+          <div class="readout">✔ Complete separation — plasma on top, thin buffy coat, packed RBCs below. Capillary reader ready.</div>`;
+        S.spin.separation = "complete";
+        log("centrifuge_end", {adequate:true, separation:"complete"});
+      } else {
+        out.innerHTML = `<div class="tube3">
+            <div class="layer" style="height:46%;background:linear-gradient(#e8b4a4,#d98a76)"></div>
+            <div class="layer" style="height:54%;background:linear-gradient(#a03224,#7d1f14)"></div>
+          </div>
+          <div class="warn">✖ Incomplete separation (g = ${g.toLocaleString()}, ${mins} min). Cells still suspended — re-spin at ≥1,500 × g for ≥5 min before reading assays.</div>`;
+        S.spin.separation = "incomplete";
+        log("centrifuge_end", {adequate:false, separation:"incomplete"}, "warn");
+      }
+      renderSnapshot();
+      goto("assay");
+    }, 2600);
+  };
+
+  /* ---------------- assays ---------------- */
+  document.querySelectorAll(".well").forEach(w=>{
+    w.onclick = ()=>{ w.classList.toggle("agg");
+      S.assays.typing[w.dataset.anti] = w.classList.contains("agg");
+      log("typing", {anti: w.dataset.anti, agglutinated: w.classList.contains("agg")});
+      interpretTyping(); renderSnapshot();
+    };
+  });
+  function interpretTyping(){
+    const t=S.assays.typing, truth=S.truth;
+    const valid = S.tubeFit.abo && S.tubeFit.rh;
+    let type = (t.A?"A":"")+(t.B?"B":"") || "O";
+    type += t.D ? "+" : "−";
+    const match = valid && type === truth.abo+truth.rh;
+    document.getElementById("type-out").innerHTML = valid
+      ? `Interpreted: <b>${type}</b>${match?` — matches patient record ✔`:` — ✖ does not match expected (${truth.abo}${truth.rh}) ⚠`}`
+      : `⚠ Tube drawn does not support typing (needs EDTA).`;
+    S.assays.typingResult = type;
+    if(!valid) log("typing_invalid_tube", {tube:S.draw.tube}, "warn");
+    else log("typing_result", {reported:type, expected:truth.abo+truth.rh, match});
+  }
+  document.getElementById("btn-assay-done").onclick = ()=>{
+    ["hct","hb","wbc","esr","chol"].forEach(k=>{
+      const el=document.getElementById("a-"+k), v=el.value===""?null:+el.value;
+      S.assays[k]=v;
+      if(v!==null){
+        const valid = S.tubeFit[k] && S.spin.separation!=="incomplete";
+        S.assays[k+"_valid"]=valid;
+        const off = Math.abs(v - S.truth[k]);
+        log("assay", {test:k, reported:v, truth:S.truth[k], delta:+off.toFixed(2), valid_on_tube:!!S.tubeFit[k], accurate: off<= (k==="chol"?15:k==="esr"?5:1.5)}, (!S.tubeFit[k])?"warn":"info");
+      }
+    });
+    log("assays_recorded", S.assays);
+    runDiagnosis(); renderSnapshot(); goto("diagnosis");
+  };
+
+  /* ---------------- diagnosis engine (rule demo) ---------------- */
+  function runDiagnosis(){
+    const a=S.assays, h=[];
+    const valid = k => a[k+"_valid"]!==false;
+    if(valid("hct")||valid("hb")){
+      if((a.hb!==null&&a.hb<12)||(a.hct!==null&&a.hct<36)) h.push({dx:"Anemia", conf:0.85, basis:"Hb<12 g/dL and/or Hct<36%"});
+      if((a.hb!==null&&a.hb>17)||(a.hct!==null&&a.hct>52)) h.push({dx:"Polycythemia", conf:0.8, basis:"Hb>17 g/dL and/or Hct>52%"});
+    }
+    if(valid("wbc")&&a.wbc!==null){
+      if(a.wbc>11) h.push({dx:"Infection / inflammatory response", conf:0.75, basis:"WBC > 11 ×10⁹/L"});
+      if(a.wbc<4)  h.push({dx:"Bone-marrow suppression / viral", conf:0.6, basis:"WBC < 4 ×10⁹/L"});
+    }
+    if(valid("esr")&&a.esr!==null&&a.esr>30) h.push({dx:"Active inflammation", conf:0.6, basis:"ESR > 30 mm/hr"});
+    if(valid("chol")&&a.chol!==null&&a.chol>240) h.push({dx:"Hypercholesterolemia", conf:0.9, basis:"Serum cholesterol > 240 mg/dL"});
+    if(!h.length) h.push({dx:"No abnormal findings from recorded assays", conf:0.5, basis:"All recorded values within reference ranges (or no valid data)"});
+    const invalid = Object.keys(S.tubeFit).filter(k=>!S.tubeFit[k]&&S.assays[k]!==null);
+    S.diagnosis = { hypotheses: h, data_gaps: invalid, generated: new Date().toISOString(),
+      note: invalid.length? `Invalid data on ${invalid.join(", ")} — wrong tube or incomplete spin; engine confidence reduced.` : null };
+    log("diagnosis", {hypotheses:h.map(x=>x.dx), gaps:invalid});
+    document.getElementById("diag-out").innerHTML =
+      h.map(x=>`<div class="diag-item"><b>${x.dx}<span>${Math.round(x.conf*100)}%</span></b><span class="hint">${x.basis}</span></div>`).join("")
+      + (S.diagnosis.note?`<div class="warn">${S.diagnosis.note}</div>`:"");
+  }
+
+  /* ---------------- export / bus API ---------------- */
+  function snapshot(){ return JSON.parse(JSON.stringify(S)); }
+  window.HEXA_BUS = {
+    snapshot, truth: ()=> S&&S.truth, events: ()=> BUS.events.slice(),
+    diagnosis: ()=> S&&S.diagnosis
+  };
+  document.getElementById("btn-export").onclick = ()=>{
+    const blob = new Blob([JSON.stringify({events:BUS.events, state:snapshot()},null,2)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=S.session.id+".json"; a.click();
+    log("export", {file:a.download});
+  };
+  document.getElementById("btn-reset").onclick = ()=> location.reload();
+  window.addEventListener("message", (ev)=>{
+    if(ev.data && ev.data.type==="hexa:get" && S){
+      ev.source.postMessage({type:"hexa:state", payload:snapshot(), events:BUS.events}, "*");
+      log("bus", {msg:"state served to parent frame"});
+    }
+  });
+  // seed via URL
+  const q=new URLSearchParams(location.search);
+  if(q.get("patient")){
+    const p=PATIENTS.find(x=>x.id===q.get("patient"));
+    if(p){ newSession(p); log("seed",{patient:p.id, via:"url"}); goto("draw"); }
+  }
+  if(q.get("debug")==="1"){
+    window.HEXA_BUS.DEBUG_show_truth = true;
+    log("debug","truth exposure enabled via ?debug=1","warn");
+    const iv=setInterval(()=>{ if(S){ clearInterval(iv);
+      document.querySelectorAll(".pt").forEach((el,i)=>{ if(PATIENTS[i]&&PATIENTS[i].truth) el.title = "Truth: "+PATIENTS[i].truth.condition+" (Hb "+PATIENTS[i].truth.hb+")"; });
+    }},300);
+  }
+  function renderSnapshot(){ document.getElementById("snapshot").textContent = S?JSON.stringify(S,null,1):""; }
+
+  log("boot", {template:"blood-analysis-v1", bus:"ready"});
+})();
+</script>
+</body>
+</html>

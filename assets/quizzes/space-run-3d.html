@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Astro Run 3D</title>
+<style>
+  /* --- Page looks --- */
+  body {
+    margin: 0;
+    background: #05060f;
+    overflow: hidden;              /* no scrollbars */
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+  canvas { display: block; }
+
+  /* --- Score display (tor = HUD), drawn ON TOP of the 3D scene --- */
+  #hud {
+    position: fixed;
+    top: 14px;
+    left: 0; right: 0;
+    text-align: center;
+    color: #7df9ff;
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.8);
+    pointer-events: none;         /* clicks pass through it */
+  }
+
+  /* --- Start / Game-over screen overlay --- */
+  #overlay {
+    position: fixed;
+    inset: 0;                     /* cover the whole screen */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 4, 12, 0.72);
+    color: #cfd8ff;
+    text-align: center;
+    cursor: pointer;
+  }
+  #overlay h1 {
+    color: #7df9ff;
+    font-size: 44px;
+    letter-spacing: 6px;
+    margin: 0 0 10px;
+  }
+  #overlay p  { color: #6b7395; margin: 4px 0; }
+  #overlay .big { font-size: 20px; color: #fff; margin-top: 18px; }
+</style>
+</head>
+<body>
+
+<div id="hud">Score: 0</div>
+<div id="overlay">
+  <h1>ASTRO RUN 3D</h1>
+  <p>Fly through the asteroid belt. Don't crash!</p>
+  <p>Arrows / WASD to steer &nbsp;•&nbsp; collect the glowing crystals 💎 (+50)</p>
+  <p class="big">Click or press ENTER to launch</p>
+</div>
+
+<!-- Three.js: the library that gives us 3D in the browser, loaded from a CDN -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+/* ============================================================
+   ASTRO RUN 3D — built with Three.js.
+   The ship stays still while obstacles fly toward it;
+   that's easier than moving the ship through the world.
+   ============================================================ */
+
+import * as THREE from "three";
+
+// ------------------------------------------------------------
+// 1. THE 3D WORLD: scene (contains everything), camera (your
+//    eyes), renderer (draws it all on the screen)
+// ------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x05060f, 30, 130); // distant things fade out
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(0, 4, 10); // slightly above and behind the ship
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+document.body.appendChild(renderer.domElement);
+
+// Resize the 3D view when the browser window changes size
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// Lights: one soft overall light, one bright "sun" to cast shade
+scene.add(new THREE.AmbientLight(0x404e77, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(5, 10, 8);
+scene.add(sun);
+
+// Starfield: 500 tiny white dots scattered in a big ball of space
+const starPositions = [];
+for (let i = 0; i < 500; i++) {
+  starPositions.push(
+    (Math.random() - 0.5) * 260,
+    Math.random() * 120 - 20,
+    (Math.random() - 0.5) * 260
+  );
+}
+const stars = new THREE.Points(
+  new THREE.BufferGeometry().setAttribute("position",
+    new THREE.Float32BufferAttribute(starPositions, 3)),
+  { color: 0x8fa8ff, size: 0.6 }
+);
+scene.add(stars);
+
+// ------------------------------------------------------------
+// 2. THE SHIP: several simple shapes glued into a group
+// ------------------------------------------------------------
+const ship = new THREE.Group();
+
+const body = new THREE.Mesh(
+  new THREE.ConeGeometry(0.7, 3, 12),
+  new THREE.MeshStandardMaterial({ color: 0x7df9ff, metalness: 0.6, roughness: 0.3 })
+);
+body.rotation.x = -Math.PI / 2;   // point the cone forward (into the screen)
+ship.add(body);                   // cone's tip lies along +Y by default; rotating makes it point at -Z
+
+// Two red wings
+const wingGeo = new THREE.BoxGeometry(2.6, 0.12, 1);
+const wingMat = new THREE.MeshStandardMaterial({ color: 0xff4d6d });
+const wingL = new THREE.Mesh(wingGeo, wingMat);
+wingL.position.set(-0.9, 0, 0.7);  wingL.rotation.y = 0.3;
+const wingR = wingL.clone();
+wingR.position.x = 0.9;  wingR.rotation.y = -0.3;
+ship.add(wingL, wingR);
+
+// Engine glow: a small bright sphere at the back
+const engine = new THREE.Mesh(
+  new THREE.SphereGeometry(0.35, 12, 12),
+  new THREE.MeshBasicMaterial({ color: 0xffa94d })
+);
+engine.position.z = 1.6;
+ship.add(engine);
+
+// Invisible sphere used only for crash tests (collision "hitbox")
+const hitbox = new THREE.SphereGeometry(1.1, 8, 8);
+
+ship.position.set(0, 1.5, 0);
+scene.add(ship);
+
+// ------------------------------------------------------------
+// 3. OBSTACLES & CRYSTALS: recycled pools of objects.
+//    Instead of creating/destroying objects mid-game (slow!),
+//    we make a fixed batch up front and toggle them active/inactive.
+// ------------------------------------------------------------
+const LANES_W = 26; // how wide/deep the flight corridor is
+const LANES_H = 12;
+
+const asteroids = [];
+const asteroidGeo = new THREE.IcosahedronGeometry(1, 0); // lumpy rock shape
+for (let i = 0; i < 30; i++) {
+  const a = new THREE.Mesh(
+    asteroidGeo,
+    new THREE.MeshStandardMaterial({ color: 0x9aa3c4, roughness: 0.9 })
+  );
+  a.userData = { active: false };
+  a.visible = false;
+  scene.add(a);
+  asteroids.push(a);
+}
+
+const crystals = [];
+const crystalGeo = new THREE.OctahedronGeometry(0.7);
+const crystalMat = new THREE.MeshStandardMaterial({
+  color: 0x25f4ee, emissive: 0x25f4ee, emissiveIntensity: 1.2
+});
+for (let i = 0; i < 10; i++) {
+  const c = new THREE.Mesh(crystalGeo, crystalMat);
+  c.userData = { active: false };
+  c.visible = false;
+  scene.add(c);
+  crystals.push(c);
+}
+
+// Spawn helpers: find an inactive object, place it far ahead (z = -140)
+function spawnAsteroid() {
+  const a = asteroids.find(x => !x.userData.active);
+  if (!a) return;
+  a.userData.active = true;
+  a.visible = true;
+  a.position.set(
+    (Math.random() - 0.5) * LANES_W,
+    (Math.random() - 0.5) * LANES_H + 2,
+    -140
+  );
+  const s = 0.8 + Math.random() * 2.2;      // random size...
+  a.scale.setScalar(s);
+  a.userData.radius = s;                     // ...remembered for hit tests
+  a.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+  a.userData.spin = new THREE.Vector3((Math.random() - 0.5) / 2, (Math.random() - 0.5) / 2, 0);
+}
+
+function spawnCrystal() {
+  const c = crystals.find(x => !x.userData.active);
+  if (!c) return;
+  c.userData.active = true;
+  c.visible = true;
+  c.position.set(
+    (Math.random() - 0.5) * LANES_W * 0.8,
+    (Math.random() - 0.5) * LANES_H + 2,
+    -140
+  );
+}
+
+// ------------------------------------------------------------
+// 4. SOUND (same trick as the 2D game: generated, no files)
+// ------------------------------------------------------------
+let audio = null;
+function beep(freq, length = 0.1, type = "square", volume = 0.12) {
+  try {
+    if (!audio) audio = new AudioContext();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + length);
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + length);
+  } catch (err) {}
+}
+
+// ------------------------------------------------------------
+// 5. GAME STATE & INPUT
+// ------------------------------------------------------------
+let running = false;
+let score = 0;
+let speed = 30;               // world units per second flying forward
+let spawnCooldown = 0;
+let crystalCooldown = 200;
+const keys = {};
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Enter") startGame();
+});
+window.addEventListener("keyup", (e) => keys[e.code] = false);
+
+const overlay = document.getElementById("overlay");
+const hud = document.getElementById("hud");
+overlay.addEventListener("click", startGame);
+
+function startGame() {
+  if (running) return;
+  running = true;
+  score = 0;
+  speed = 30;
+  spawnCooldown = 0;
+  crystalCooldown = 150;
+  ship.position.set(0, 1.5, 0);
+  ship.rotation.set(0, 0, 0);
+  asteroids.forEach(a => { a.userData.active = false; a.visible = false; });
+  crystals.forEach(c => { c.userData.active = false; c.visible = false; });
+  overlay.style.display = "none";
+  beep(440, 0.15, "sawtooth");
+}
+
+function gameOver() {
+  running = false;
+  const best = Number(localStorage.getItem("astroRunBest") || 0);
+  const newBest = score > best;
+  localStorage.setItem("astroRunBest", Math.max(score, best));
+  overlay.innerHTML = `
+    <h1>CRASHED!</h1>
+    <p class="big">Score: ${score}</p>
+    ${newBest ? '<p style="color:#7df9ff">★ New personal best!</p>' : `<p>Best: ${Math.max(score, best)}</p>`}
+    <p class="big">Click or press ENTER to fly again</p>`;
+  overlay.style.display = "flex";
+  beep(90, 0.4, "sawtooth", 0.2);
+}
+
+// ------------------------------------------------------------
+// 6. THE UPDATE STEP: runs every frame before drawing.
+//    dt = delta time = how many seconds passed since the last
+//    frame. Multiplying by dt keeps the game speed identical
+//    on fast and slow computers!
+// ------------------------------------------------------------
+const clock = new THREE.Clock();
+
+function update(dt) {
+  if (!running) return;
+
+  // --- Speed ramps up the longer you survive ---
+  speed = Math.min(speed + dt * 1.2, 80);
+  score += Math.round(speed * dt);          // distance travelled earns points
+
+  // --- Steering: ship slides side to side and up/down ---
+  if (keys.ArrowLeft  || keys.KeyA) ship.position.x -= 14 * dt;
+  if (keys.ArrowRight || keys.KeyD) ship.position.x += 14 * dt;
+  if (keys.ArrowUp    || keys.KeyW) ship.position.y += 10 * dt;
+  if (keys.ArrowDown  || keys.KeyS) ship.position.y -= 10 * dt;
+
+  // Keep the ship inside the corridor
+  ship.position.x = Math.max(-LANES_W / 2, Math.min(LANES_W / 2, ship.position.x));
+  ship.position.y = Math.max(0.6,         Math.min(LANES_H + 2, ship.position.y));
+
+  // Tilt the ship when turning (mostly cosmetic, feels great)
+  const tiltTarget = (keys.ArrowRight || keys.KeyD ? -0.5 : 0) + (keys.ArrowLeft || keys.KeyA ? 0.5 : 0);
+  ship.rotation.z += (tiltTarget - ship.rotation.z) * Math.min(1, dt * 8); // smooth lean
+
+  // --- Spawn obstacles & crystals ---
+  spawnCooldown -= dt;
+  if (spawnCooldown <= 0) {
+    spawnAsteroid();
+    spawnCooldown = Math.max(0.12, 0.5 - score / 4000); // harder over time
+  }
+  crystalCooldown -= dt;
+  if (crystalCooldown <= 0) {
+    spawnCrystal();
+    crystalCooldown = 2 + Math.random() * 2;
+  }
+
+  // --- Move everything toward the ship (+Z) ---
+  const move = speed * dt;
+  for (const a of asteroids) {
+    if (!a.userData.active) continue;
+    a.position.z += move;
+    a.rotation.x += a.userData.spin.x * dt;
+    a.rotation.y += a.userData.spin.y * dt;
+
+    // Crash test: is the ship touching this asteroid?
+    const crash = hitboxRadius() + a.userData.radius * 0.9;
+    if (ship.position.distanceTo(a.position) < crash) { gameOver(); return; }
+
+    if (a.position.z > 15) { a.userData.active = false; a.visible = false; } // passed us
+  }
+
+  for (const c of crystals) {
+    if (!c.userData.active) continue;
+    c.position.z += move;
+    c.rotation.y += dt * 3;
+    // Special pickup shout: collection sound is a happy ding
+    if (ship.position.distanceTo(c.position) < 1.8) {
+      c.userData.active = false;
+      c.visible = false;
+      score += 50;
+      beep(1200, 0.15, "triangle", 0.15);
+    }
+    if (c.position.z > 15) { c.userData.active = false; c.visible = false; }
+  }
+
+  // --- Camera gently follows the ship for a smooth cinematic feel ---
+  camera.position.x += (ship.position.x * 0.5 - camera.position.x) * Math.min(1, dt * 4);
+  camera.position.y += (ship.position.y * 0.4 + 2.5 - camera.position.y) * Math.min(1, dt * 4);
+  engine.scale.setScalar(1 + Math.sin(clock.elapsedTime * 30) * 0.15); // flickering engine
+
+  hud.textContent = "Score: " + score;
+}
+
+// The "size" of the ship for crash purposes
+function hitboxRadius() { return 1.0; }
+
+// ------------------------------------------------------------
+// 7. THE MAIN LOOP: update, render, repeat forever
+//    (render = draw the whole 3D scene from the camera's view)
+// ------------------------------------------------------------
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05); // clamp so tab-switching doesn't teleport things
+  update(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);                 // ask the browser for the next frame
+}
+loop();
+</script>
+</body>
+</html>

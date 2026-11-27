@@ -1,0 +1,1324 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Carpe Diem Diagnosis Engine · Case 02 (Standalone Offline) | Carpe Diem Hospital</title><script>
+/* Standalone offline voice: browser speechSynthesis (single narrator). No server, no API key, no internet needed. */
+(function(){
+ var MUTE_KEY='sv-tts-muted';
+ function lsGet(k,d){try{return localStorage.getItem(k)||d;}catch(e){return d;}}
+ function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+ var muted=null, voices=null;
+ function isMuted(){ if(muted===null) muted=lsGet(MUTE_KEY,'0')==='1'; return muted; }
+ function setMuted(m){ muted=!!m; lsSet(MUTE_KEY, muted?'1':'0'); if(muted && window.speechSynthesis) speechSynthesis.cancel(); }
+ function pickVoice(){
+   if(!window.speechSynthesis) return null;
+   voices = speechSynthesis.getVoices()||[];
+   var prefs=['George','Daniel','Google UK English Male','Microsoft David','David','Google US English','Adam','Fred','Alex','Google UK English Female'];
+   for(var i=0;i<prefs.length;i++){ var v=voices.filter(function(x){return x.name.indexOf(prefs[i])>=0;})[0]; if(v) return v; }
+   return voices.length?voices[0]:null;
+ }
+ if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=pickVoice; pickVoice(); }
+ var queue=[], speaking=false;
+ function next(){
+   if(isMuted() || !queue.length){ speaking=false; return; }
+   var text=queue.shift(); speaking=true;
+   try{
+     var u=new SpeechSynthesisUtterance(text);
+     var v=pickVoice(); if(v) u.voice=v;
+     u.rate=0.96; u.pitch=1; u.volume=1;
+     u.onend=u.onerror=function(){ speaking=false; if(queue.length) next(); };
+     speechSynthesis.speak(u);
+   }catch(e){ speaking=false; }
+ }
+ function speak(roleOrText, maybeText){
+   var text = (maybeText!==undefined)? maybeText : roleOrText;
+   if(isMuted() || !text || !window.speechSynthesis) return Promise.resolve(false);
+   text=String(text).replace(/<[^>]+>/g,'').trim();
+   if(!text) return Promise.resolve(false);
+   queue.push(text);
+   if(!speaking) next();
+   return Promise.resolve(true);
+ }
+ function speakSeq(roleOrLines, lines){
+   var arr=(lines!==undefined?lines:roleOrLines).slice();
+   arr.forEach(function(t){ queue.push(t); });
+   if(!speaking) next();
+   return Promise.resolve(true);
+ }
+ window.STUDYVERSE_TTS={
+   ready:function(){ return Promise.resolve(true); },
+   speak:speak, speakSeq:speakSeq,
+   muted:isMuted, setMuted:setMuted,
+   status:function(){ return isMuted()?'muted':(window.speechSynthesis?'on':'no-server'); },
+   roleForName:function(){ return 'narrator'; },
+   roleForLine:function(){ return 'narrator'; },
+   stop:function(){ queue=[]; if(window.speechSynthesis) speechSynthesis.cancel(); speaking=false; }
+ };
+ /* iOS/Android: resume voices inside the first tap so later narration is allowed */
+ var unlocked=false;
+ ['pointerdown','touchstart','keydown'].forEach(function(ev){
+   document.addEventListener(ev,function(){ if(!unlocked){unlocked=true; if(window.speechSynthesis){ try{speechSynthesis.resume();}catch(e){} } } }, {passive:true});
+ });
+})();
+</script><style>
+:root{--bg:#0a0d16;--card:#151d33;--card2:#1e2a4a;--txt:#f5f1e6;--mut:#b8c0d8;--acc:#d4af37;--good:#2fd38a;--bad:#ff5c7a;--warn:#ffb347}
+body.light{--bg:#d8d5c9;--card:#ece9dd;--card2:#f4f1e6;--txt:#26241c;--mut:#57534a;--acc:#7a5c00;--good:#0c6b42;--bad:#a3132f;--warn:#8a5a00}
+body.sunset{--bg:#2a1218;--card:#401c26;--card2:#552633;--txt:#ffe9d2;--mut:#e0a37e;--acc:#ff9e64;--good:#7fe0a8;--bad:#ff7aa2;--warn:#ffcf7a}
+body.ocean{--bg:#072733;--card:#0d3d50;--card2:#145a73;--txt:#e8f6ff;--mut:#a8d0e6;--acc:#4dd0e1;--good:#5fe3b3;--bad:#ff8a9a;--warn:#ffd27a}
+body.forest{--bg:#0d2417;--card:#163826;--card2:#1f5234;--txt:#e6f5e9;--mut:#9fc7a8;--acc:#7fd08c;--good:#5fe3b3;--bad:#ff8a9a;--warn:#ffd27a}
+select.themeSel{min-height:36px;padding:6px 10px;border-radius:8px;background:var(--card2);color:var(--txt);border:1px solid var(--acc);font-family:inherit;font-size:13px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:Georgia,serif;line-height:2}
+#app{max-width:860px;margin:0 auto;padding:24px 16px 70px}
+.brandbar{text-align:center;padding:16px 0 12px;border-bottom:1px solid #d4af3755}
+.bb{letter-spacing:3px;color:var(--acc);font-weight:800;font-size:13px}.bs{color:var(--mut);font-size:11px}
+.card{background:var(--card);border:1px solid #d4af3755;border-radius:14px;padding:22px;margin:18px 0}
+h1{font-size:24px;margin:10px 0}h2{color:var(--acc);margin:10px 0;font-size:19px}h3{margin:8px 0}
+.badge{display:inline-block;background:var(--card2);color:var(--acc);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;text-transform:uppercase}
+.btn{display:block;width:100%;min-height:46px;padding:12px;margin:8px 0;background:linear-gradient(135deg,#d4af37,#f0d47a);color:#1a1400;border:2px solid var(--acc);border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
+.btn.alt{background:transparent;color:var(--txt);border-color:var(--mut)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input,select,textarea{width:100%;padding:12px;margin:6px 0;background:var(--card2);color:var(--txt);border:1px solid var(--mut);border-radius:8px;font-family:inherit;font-size:14px}
+label{font-size:13px;color:var(--mut)}
+.dept{background:var(--card2);border:1px solid var(--mut);border-radius:12px;padding:12px;text-align:center}
+.dept.me{border-color:var(--acc);background:var(--card)}.dept.off{border-color:var(--acc);background:var(--card)}
+.ico{font-size:24px}.dept h3{font-size:13px;margin:6px 0}.dept p{font-size:11px;color:var(--mut);line-height:1.8;margin:0}
+table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.9}th,td{padding:6px 8px;border-bottom:1px solid var(--mut);text-align:left}th{color:var(--acc)}
+.foot{text-align:center;color:var(--mut);font-size:11px;letter-spacing:1px;margin-top:18px}.foot b{color:var(--acc)}
+.diffGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.diffGrid button{padding:8px 4px;border-radius:10px;border:1px solid var(--mut);background:var(--card2);color:var(--txt);cursor:pointer;font-family:inherit}
+.diffGrid button.on{background:var(--acc);color:#1a1400}
+.chatlog{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow:auto;padding:6px 0;margin:10px 0}
+.q{background:var(--card2);border:1px solid var(--acc);border-radius:10px;padding:12px;line-height:2}
+.a{background:var(--card2);border:1px solid var(--good);border-radius:10px;padding:12px;line-height:2}
+.labr{background:var(--card2);border:1px solid var(--bad);border-radius:10px;padding:12px;line-height:2}
+.warn{background:var(--card2);border:1px solid var(--warn);border-radius:10px;padding:12px;line-height:2}
+.order{background:#fffbe8;color:#1a1400;border-radius:12px;padding:14px;border:2px solid var(--acc);line-height:2}
+pre.lab{white-space:pre-wrap;background:var(--card2);border:1px solid var(--mut);border-radius:10px;padding:12px;font:13px ui-monospace,Consolas,monospace;color:var(--txt);line-height:1.9}
+details{margin:10px 0}summary{cursor:pointer;color:var(--acc);font-weight:700}
+.bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--good));transition:width .3s}
+.mut{color:var(--mut)}
+.time{display:inline-block;background:var(--card2);border:1px solid var(--mut);border-radius:6px;padding:1px 8px;font:12px ui-monospace,Consolas,monospace;color:var(--acc)}
+.opt{display:block;width:100%;min-height:44px;padding:10px 12px;margin:6px 0;background:var(--card2);color:var(--txt);border:1px solid var(--mut);border-radius:10px;cursor:pointer;text-align:left;font-family:inherit;font-size:14px;line-height:1.7}
+.opt.on{border-color:var(--acc);background:var(--card)}
+.opt.ok{border-color:var(--good);background:var(--card)}
+.opt.no{border-color:var(--bad);background:var(--card)}
+.crit{background:var(--card2);border:2px solid var(--bad);border-radius:12px;padding:12px;margin:10px 0;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 #ff5c7a00}50%{box-shadow:0 0 18px #ff5c7a55}}
+body{-webkit-tap-highlight-color:rgba(212,175,55,.15);touch-action:manipulation}
+@media (max-width:620px){
+ #app{padding:14px 10px 60px;max-width:100%}
+ .card{padding:14px;border-radius:12px;margin:14px 0;overflow-x:auto}
+ .card h1{font-size:20px}.card h2{font-size:17px}
+ .two,.gr,.diffGrid{grid-template-columns:1fr}
+ .chatlog{max-height:none;overflow:visible}
+ .btn{min-height:50px;font-size:15px}
+ .opt{min-height:48px;font-size:15px}
+ input,select,textarea{font-size:16px}
+ table{font-size:12px;min-width:420px}
+ .refw table,.evlog table{min-width:0}
+ .dept p{font-size:12px}
+ .foot{margin-top:14px}
+}
+</style><meta name="description" content="Carpe Diem Diagnosis Engine Case 02 — standalone offline build. Download this one file and play on any device; narrator voice via browser, progress saved on this device."></head><body><div id="app"></div><script>
+(function(){'use strict';
+/* ============================================================
+   CARPE DIEM DIAGNOSIS ENGINE — CASE 02 BUILD
+   CDH-CASE-001 · "The Fever That Would Not Break" · V2 SOURCE-GROUNDED
+   Internal blueprint: first-presentation pain crisis — sickle cell disease is the earned diagnosis.
+   Sources: Carpe Diem Diagnosis Engine — Case 02 · first-presentation severe pain crisis (reveal at FINAL gate) · Daniel Owusu · internal case blueprint; teaching values are simulated.
+            Carpe_Diem_Diagnosis_Engine_Master_Prompt_v1.pdf (uploaded 08:17)
+            CARPE_DIEM_MASTER_PROMPT_TEMPLATE.txt
+   Honoured: V1 frozen & untouched · spoiler gate (disease name only at Differential/
+   Final/Quiz) · locked timeline · critical results auto-communicate · MLS has NO
+   final-diagnosis button · glucose guardrail · difficulty scales hints/ranges ·
+   scoring H20 / I25 / D20 / F25 / S10 = 100 · quiz 10 MCQ + 3 theory.
+   ============================================================ */
+var CFG={game:'diagnosis-case02'};
+var PAT={name:'Daniel Owusu',age:23,kg:0,sex:'Male',job:'Electrical installation apprentice',home:'Madina, Greater Accra Region'};
+var TL=CASETL();
+function CASETL(){return{arrive:'09:58',triage:'10:00',glu:'10:02',dxt:'10:06',rea:'10:14',hx:'10:20',ord:'10:24',
+ collect:'10:26',receipt:'10:30',spin:'10:42',fbc:'10:48',chem:'10:54',rdt:'11:06',micro:'11:24',
+ verify:'11:30',release:'11:34',crit:'11:36',ack:'11:38'};}
+
+var DEPTS=[
+ {id:'medicine',name:'BSc. Human Biology (Medicine)',ico:'🩺',desc:'ABCDE · pain protocol · trigger screen · diagnosis · plan'},
+ {id:'nursing',name:'BSc. Nursing',ico:'💉',desc:'Triage · pain scores · obs trends · fluids · escalation · handover'},
+ {id:'mls',name:'BSc. Medical Laboratory Science (MLS)',ico:'🧪',desc:'FBC/retics · film · HbS solubility · electrophoresis context'},
+ {id:'pharmacy',name:'Doctor of Pharmacy (Pharm D)',ico:'💊',desc:'Opioid analgesia · dose verification · fluid caution · prophylaxis'},
+ {id:'herbal',name:'Bachelor of Herbal Medicine (BHM)',ico:'🌿',desc:'Respectful product history · interaction review · no blame'},
+ {id:'imaging',name:'BSc. Medical Imaging',ico:'🩻',desc:'Only on a justified clinical question (e.g. chest film for ACS)'},
+ {id:'physio',name:'BSc. Physiotherapy and Sports Science',ico:'🦿',desc:'Post-stabilisation gentle mobility · DVT awareness'},
+ {id:'rehab',name:'BSc. Disability and Rehabilitation Studies',ico:'🦽',desc:'Post-crisis function + return to apprenticeship work'},
+ {id:'dental',name:'Bachelor of Dental Surgery (BDS)',ico:'🦷',desc:'Not needed here — no oral/dental axis in this case'},
+ {id:'midwifery',name:'BSc. Midwifery',ico:'🤰',desc:'Not applicable — this patient is male'},
+ {id:'vet',name:'Doctor of Veterinary Medicine (DVM)',ico:'🐾',desc:'Not in the treatment path — One Health note only'}
+];
+
+var POSTQ=[
+ {q:'Disease definition. Which statement best describes sickle cell disease (HbSS)?',a:['An inherited haemoglobin disorder in which HbS polymerises on deoxygenation, causing red-cell sickling, haemolysis and vaso-occlusion.','A bacterial infection of the bone marrow.','An autoimmune destruction of platelets.','A vitamin K deficiency disorder.'],c:0,exp:'HbSS is an inherited haemoglobinopathy: HbS polymerisation drives sickling, haemolysis and vaso-occlusive events.'},
+ {q:'Inheritance. Daniel has HbSS. What does this imply about his parents\' genotypes?',a:['Both parents carry at least one sickle gene (e.g. both AS trait).','Only his father carries the trait.','Neither parent needs any haemoglobin variant.','It is not inherited.'],c:0,exp:'HbSS requires inheriting an HbS gene from each parent (commonly both parents are AS trait carriers).'},
+ {q:'Crisis mechanism. What drives an acute vaso-occlusive pain episode?',a:['Sickled cells obstructing the microcirculation, causing tissue ischaemia and pain.','Excess platelet activation alone.','Direct viral invasion of joints.','Bile acid crystallisation in joints.'],c:0,exp:'Polymerised HbS → sickled rigid cells → microvascular occlusion → ischaemia → severe pain (thigh/back in this case).'},
+ {q:'Common triggers. Which are recognised precipitants of a VOC?',a:['Dehydration, infection, cold exposure, stress and hypoxia.','Feeding after midnight only.','A single glass of water.','Complete bed rest for a week.'],c:0,exp:'Dehydration, infection, cold, stress and hypoxia are classic precipitants — screen for them on presentation.'},
+ {q:'Haemoglobin 8.1 g/dL. How should this be interpreted?',a:['Chronic anaemia is typical in HbSS; the change from clinical context is more informative than a population "normal".','8.1 g/dL is normal, so nothing matters.','Immediate emergency transfusion is always required for any value under 10.','The reticulocyte count is irrelevant.'],c:0,exp:'In HbSS, interpret against the patient\'s own baseline — a small fall without reticulocyte collapse is reassuring context, while big drops or low retics signal worse problems.'},
+ {q:'Reticulocytes 9.8%. What does an appropriate reticulocyte response suggest here?',a:['The marrow is compensating appropriately — an aplastic picture is not the initial story.','The patient must have leukaemia.','Reticulocytes never matter in HbSS.','The sample must be wrong.'],c:0,exp:'A high retic count shows marrow compensation. A LOW retic would raise aplastic crisis (e.g. parvovirus B19).'},
+ {q:'Acute chest syndrome. Which combination should raise concern for ACS?',a:['New chest symptoms with hypoxia/desaturation and a new chest radiograph infiltrate.','Thigh pain alone in a well patient.','Constipation for two days.','A single nosebleed.'],c:0,exp:'ACS = new pulmonary infiltrate plus respiratory signs/symptoms — the most feared acute complication; screen with symptoms and SpO2, imaging only when justified.'},
+ {q:'Pain management. What is the appropriate approach to severe VOC pain?',a:['Prompt, graded analgesia per protocol — including parenteral opioids early for severe pain — with regular reassessment.','Withhold analgesia until all investigations return.','Paracetamol only, no matter the pain score.','Ice packs as the sole therapy.'],c:0,exp:'Severe VOC pain is an emergency: timely analgesia (WHO ladder → parenteral opioids), reassessed regularly. Under-treatment is the error.'},
+ {q:'Fluids. How should hydration be managed in uncomplicated VOC?',a:['Maintain hydration (oral preferred, IV if needed) and avoid overload.','Never give fluids in any form.','Aggressive overload to "flush" the crisis.','Restrict all oral intake.'],c:0,exp:'Maintenance hydration supports the crisis; overload risks pulmonary complications — monitor balance and respiratory status.'},
+ {q:'Infection. Why is infection screening important in Daniel\'s presentation?',a:['Infection is a classic precipitant of VOC and HbSS patients are functionally asplenic — penicillin prophylaxis and vaccination matter.','Infection is impossible in HbSS.','Antibiotics are never used in VOC.','Only viral infections matter.'],c:0,exp:'Infection precipitates crises; functional asplenia increases encapsulated-organism risk — screen, treat suspected infection, ensure prophylaxis/vaccines.'},
+ {q:'Transfusion. When is transfusion considered in a VOC admission?',a:['For significant drops below baseline, symptomatic anaemia, or specific complications — per protocol, not by habit.','Every VOC admission gets an automatic exchange transfusion.','Transfusion is banned in HbSS.','Only for cosmetic reasons.'],c:0,exp:'Transfusion decisions follow clinical context (clinical-context comparison, complications); simple vs exchange transfusion have defined indications.'},
+ {q:'Hydroxyurea. What is its role in HbSS?',a:['A disease-modifying agent that raises HbF and reduces crisis frequency — considered per protocol for recurrent crises.','A painkiller used only during crises.','A vitamin with no evidence in HbSS.','A replacement for all vaccinations.'],c:0,exp:'Hydroxyurea increases HbF, reducing sickling and crisis frequency — part of long-term disease modification, not the acute crisis fix.'}
+];
+
+var THEORY=[
+ {t:'THEORY 1: Pathophysiology — Explain the pathophysiology of sickle cell disease and the acute vaso-occlusive crisis. Include: the HbS mutation (β-globin Glu→Val); polymerisation on deoxygenation; red-cell sickling and rigidity; microvascular occlusion and ischaemia; intravascular/extravascular haemolysis; and how this produces Daniel\'s thigh/back pain crisis.'},
+ {t:'THEORY 2: Laboratory perspective — Discuss the laboratory assessment relevant to Daniel\'s case. Include: FBC and the meaning of comparing Hb 8.1 g/dL to his clinical picture (reference range 13–17 g/dL); reticulocyte count 9.8% (appropriate compensation vs aplastic crisis); peripheral film findings in HbSS; HbS solubility and electrophoresis/HPLC for genotype confirmation; and when malaria testing is or is not indicated.'},
+ {t:'THEORY 3: Interprofessional management — Discuss management priorities for acute uncomplicated VOC. Include: ABCDE and pain protocol (timely parenteral analgesia, reassessment); hydration without overload; trigger screening (infection, cold, stress, dehydration); nursing observation trends; MLS bench-to-report pathway; pharmacy dose verification and opioid caution; justified imaging only (chest film if ACS suspected); physio/rehab post-crisis; and education (hydroxyurea discussion, prophylaxis, vaccines).'}
+];
+
+var DEPTNOTES={};
+
+(function(){var add={nursing:{title:'CASE 02 PROCEDURE: VOC PAIN CRISIS NURSING CARE',subs:[{h:'Intro',b:'Nursing workflow for Daniel Owusu, 23M — first severe bilateral thigh and lower-back pain, presented at the ED.'},{h:'Purpose',b:'Deliver timely analgesia support, trend observations and safe hydration while screening for complications.'},{h:'Key steps',b:'Triage and pain score (9/10) → intravenous access and prescribed analgesia → obs trend (HR 108, SpO2 97% RA) → hydration balance → reassess pain and document response → escalate red flags (chest symptoms, fever, neuro change).'}]},
+mls:{title:'CASE 02 PROCEDURE: LABORATORY WORKFLOW (FIRST SEVERE PAIN CRISIS)',subs:[{h:'Intro',b:'Bench workflow for the STAT request in a previously well young man presenting with severe pain and unexplained anaemia.'},{h:'Purpose',b:'Produce FBC/retics and chemistry results that are interpreted against the clinical picture and reticulocyte response.'},{h:'Key steps',b:'Verify request/specimens → accession → FBC + reticulocyte count (Hb 8.1; retics 9.8%) → chemistry (urea/creatinine, bilirubin for haemolysis context) → film review context (HbSS morphology does not alone confirm genotype) → release report with critical-value communication.'}]},
+medicine:{title:'CASE 02 PROCEDURE: FIRST-EPISODE SEVERE PAIN ASSESSMENT (MEDICINE)',subs:[{h:'Intro',b:'Doctor workflow for a previously well 23-year-old man with first severe bilateral thigh and lower-back pain.'},{h:'Purpose',b:'Confirm the crisis picture, screen complications, and treat pain promptly and honestly.'},{h:'Key steps',b:'ABCDE → pain assessment (9/10) → targeted history (baseline, triggers, infection symptoms) → compare Hb to clinical context → screen for ACS/aplastic/sepsis features → start protocol analgesia → justified investigations only → reassess and document.'}]},
+pharmacy:{title:'CASE 02 PROCEDURE: PHARMACY REVIEW (OPIOID ANALGESIA IN VOC)',subs:[{h:'Intro',b:'Pharmacist workflow for analgesia and supportive care in acute VOC.'},{h:'Purpose',b:'Verify doses and safeguard fluid balance while pain is treated properly.'},{h:'Key steps',b:'Medication reconciliation (incl. any herbal products) → verify prescribed opioid analgesia against protocol → allergy review → fluid-caution check → renal-function context for dosing → counsel on prophylaxis/vaccination follow-up.'}]},
+imaging:{title:'CASE 02 PROCEDURE: JUSTIFIED IMAGING (ACS QUESTION)',subs:[{h:'Intro',b:'Imaging decision-making in a pain crisis without chest symptoms.'},{h:'Purpose',b:'Image only on a justified clinical question — e.g. a chest radiograph if acute chest syndrome is suspected.'},{h:'Key steps',b:'Review the clinical question → confirm SpO2/respiratory trend and symptoms → if chest symptoms/hypoxia arise, perform chest radiograph → no decorative imaging at baseline.'}]},
+physio:{title:'CASE 02 PROCEDURE: PHYSIOTHERAPY IN AND AFTER THE CRISIS',subs:[{h:'Intro',b:'Physiotherapy role once pain is controlled.'},{h:'Purpose',b:'Gentle mobility without provoking the crisis; DVT awareness.'},{h:'Key steps',b:'Assess pain first → breathing exercises → assisted mobilisation with observation → graded return to apprenticeship activity → stop/red-flag rules.'}]},
+rehab:{title:'CASE 02 PROCEDURE: REHABILITATION AND RETURN TO WORK',subs:[{h:'Intro',b:'Disability & rehabilitation perspective after the acute episode.'},{h:'Purpose',b:'Restore function and participation without assuming long-term impairment.'},{h:'Key steps',b:'Function screen → graded activity plan for electrical-installation apprenticeship tasks → fatigue/pacing education → follow-up with the sickle-cell team.'}]},
+herbal:{title:'CASE 02 PROCEDURE: HERBAL PRODUCT REVIEW (NO BLAME)',subs:[{h:'Intro',b:'Respectful herbal history in the crisis context.'},{h:'Purpose',b:'Document products used; review interactions with analgesia/hydration.'},{h:'Key steps',b:'Ask openly and respectfully → record product names/preparations where known → flag interaction concerns to pharmacy → never delay prescribed analgesia.'}]},
+dental:{title:'CASE 02 NOTE: NO ORAL/DENTAL AXIS',subs:[{h:'Intro',b:'Honest scoping for this presentation.'},{h:'Purpose',b:'The case has no oral/dental involvement; the discipline remains part of the hospital architecture.'},{h:'Key steps',b:'No dental action required for the VOC pathway.'}]},
+midwifery:{title:'CASE 02 NOTE: NOT APPLICABLE (MALE PATIENT)',subs:[{h:'Intro',b:'Honest scoping.'},{h:'Purpose',b:'No pregnancy axis — patient is male.'},{h:'Key steps',b:'No midwifery action required for this case.'}]},
+vet:{title:'CASE 02 NOTE: ONE HEALTH PERSPECTIVE',subs:[{h:'Intro',b:'Veterinary medicine is not in the treatment path here.'},{h:'Purpose',b:'Population-health teaching note only.'},{h:'Key steps',b:'No veterinary action required; One Health framing available for discussion.'}]}};for(var k in add){DEPTNOTES[k]=DEPTNOTES[k]||[];DEPTNOTES[k].unshift(add[k]);}})();
+var LABS=[
+ {name:'FBC / Haematology',time:'09:20',rel:'10:05',rows:[
+  ['Haemoglobin','8.1 g/dL','well below the usual young-adult reference; interpret with the reticulocyte response and clinical picture'],
+  ['MCV','88 fL','80-100 fL'],
+  ['WBC','12.1 x10^9/L','4.0-11.0 (mild, nonspecific)'],
+  ['Platelets','385 x10^9/L','150-400 x10^9/L'],
+  ['Reticulocytes','9.8 %','0.5-2.5 % (elevated - marrow response)']]},
+ {name:'Chemistry / Renal / Electrolytes',time:'09:25',rel:'10:05',rows:[
+  ['Creatinine','82 umol/L','context/trend'],
+  ['Sodium','138 mmol/L','135-145 mmol/L'],
+  ['Potassium','4.2 mmol/L','3.5-5.0 mmol/L'],
+  ['Total bilirubin','34 umol/L','may reflect haemolysis - interpret in context']]},
+ {name:'Malaria / Infection screen',time:'—',rel:'—',rows:[
+  ['Malaria investigation / film','Not indicated at baseline','No independent clinical indication in this first-severe-pain presentation']]},
+ {name:'Blood film / Haemoglobin studies',time:'09:30',rel:'10:05',rows:[
+  ['Peripheral film','Morphologic changes may be seen','Does not alone confirm genotype'],
+  ['HPLC / electrophoresis','Not newly performed in baseline simulation','Useful for fractions/genotype assessment in appropriate context']]}];
+
+var DIFFS_CASE=[
+ {id:'voc',label:'Acute vaso-occlusive pain episode (VOC) in newly diagnosed sickle cell disease (HbSS)',f:'Previously well · first severe bilateral thigh/lower-back pain ~14 h · Hb 8.1 (marked anaemia) · retics 9.8% · afebrile · SpO2 97% RA.',a:'Previously well young man, first severe bone crisis, brisk reticulocytosis — the full picture fits the classic haemolytic crisis presentation of previously undiagnosed sickle cell disease.',ok:1},
+ {id:'acs',label:'Acute chest syndrome',f:'The most feared complication — must be actively screened.',a:'No chest pain, cough or hypoxia at baseline; SpO2 97% RA; chest clear — screened, not declared.',ok:0},
+ {id:'apl',label:'Aplastic crisis (e.g. parvovirus B19)',f:'A sudden Hb drop with LOW retics would suggest it.',a:'Reticulocytes 9.8% — marrow responding; no reticulocytopenia.',ok:0},
+ {id:'seps',label:'Septicaemia / sepsis',f:'Infection is a classic crisis trigger.',a:'Afebrile at triage, no infective focus identified, WBC only mildly raised, haemodynamically stable.',ok:0},
+ {id:'ost',label:'Osteomyelitis (bone infection)',f:'Severe focal bone pain is a known HbSS complication.',a:'No fever, no single-bone point tenderness; pain bilateral and typical of prior crises.',ok:0}
+];
+var FINALS=[
+ {id:'ok',ok:1,label:'Acute vaso-occlusive pain episode (VOC) — newly diagnosed sickle cell disease (HbSS); previously undiagnosed; uncomplicated at baseline; complications screened'},
+ {id:'acs',ok:0,label:'Acute chest syndrome'},
+ {id:'apl',ok:0,label:'Aplastic crisis / marrow suppression'},
+ {id:'sepsis',ok:0,label:'Sepsis / severe infection precipitant'},
+ {id:'other',ok:0,label:'Other cause (e.g. osteomyelitis, fracture, renal pathology)'}
+];
+var SEV_MET='Acute VOC in newly diagnosed HbSS — pain 9/10 requiring parenteral opioid analgesia (first-time crisis, diagnosis earned);';
+var SEV_WATCH='watched + monitored: Hb 8.1, retics 9.8%, afebrile, SpO2 97% RA — ACS/aplastic/sepsis screened, not declared from the initial data.';
+var QUIZ=[
+ {q:'A 23-year-old man with no prior diagnosis presents with severe thigh and back pain. Hb 8.1 g/dL, reticulocytes 9.8%, afebrile, SpO2 97% RA, no chest symptoms. Best initial interpretation?',a:['Uncomplicated acute vaso-occlusive pain episode — continue assessment, analgesia and complication screening','Acute chest syndrome established','Aplastic crisis proven','Routine transfusion indicated for baseline anaemia'],c:0,exp:'Typical VOC features with Hb near clinical context and reticulocytosis; no baseline features of ACS/aplastic crisis; transfusion is not routine for uncomplicated pain. (Key)'},
+ {q:'Why compare current haemoglobin with the patient\'s clinical context in HbSS?',a:['Chronic anaemia is common in HbSS; change from clinical context is often more informative than population ranges alone','Baseline values are irrelevant','It confirms genotype','It replaces clinical assessment'],c:0,exp:'Interpret Hb in context of steady state, symptoms and trend. (Key)'},
+ {q:'Which finding would most strongly suggest acute chest syndrome rather than uncomplicated VOC?',a:['New chest symptoms/respiratory findings or hypoxaemia with concern for new pulmonary infiltrate','Bilateral thigh pain without respiratory symptoms','Stable SpO2 97% on room air','Pain improving with analgesia'],c:0,exp:'ACS is suggested by new respiratory/chest features ± hypoxaemia/infiltrate and requires urgent reassessment. (Key)'},
+ {q:'A marked Hb fall with an inappropriately low reticulocyte response in HbSS should raise concern for:',a:['Aplastic crisis/marrow suppression — urgent clinical correlation','Normal haemolysis','Guaranteed VOC only','Improved erythropoiesis'],c:0,exp:'Low reticulocytes during significant anaemia suggest impaired marrow response. (Key)'},
+ {q:'In a normoxic patient with uncomplicated VOC pain (SpO2 97% RA), routine oxygen is:',a:['Not indicated solely for uncomplicated pain; use if clinically indicated (e.g. hypoxaemia)','Mandatory for all patients with HbSS','A substitute for analgesia','Used to correct haemoglobin concentration'],c:0,exp:'Give oxygen for hypoxaemia/respiratory indications, not routinely in uncomplicated normoxic VOC. (Key)'},
+ {q:'Why should infection be assessed for even when VOC is suspected?',a:['Infection may precipitate or coexist with a painful episode','VOC always produces positive cultures','All VOC is sepsis','Infection is excluded by pain location'],c:0,exp:'Screen systematically; treat based on clinical evidence and protocol. (Key)'},
+ {q:'Reticulocytosis in chronic haemolytic anaemia generally indicates:',a:['Increased marrow response to ongoing red-cell destruction','Marrow failure','No haemolysis','Platelet consumption'],c:0,exp:'Compensatory erythropoiesis. (Key)'},
+ {q:'Which action is most important if pain remains severe after initial treatment?',a:['Reassess pain, function, vital signs, prior medication and adverse effects, then escalate safely under protocol','Assume drug-seeking behaviour and withhold analgesia','Repeat same medication without reassessment','Discharge because treatment was attempted'],c:0,exp:'Timely reassessment and safe escalation. (Key)'},
+ {q:'MLS receives an underfilled specimen that fails acceptance criteria. Correct action:',a:['Follow rejection/acceptance policy, document and request suitable repeat promptly','Report results anyway','Top up from another sample','Ignore policy'],c:0,exp:'Pre-analytical quality protects result validity. (Key)'},
+ {q:'Which statement best reflects interprofessional care in this case?',a:['Departments work within scope, share timely information, and coordinate reassessment/escalation for safe patient-centred care','One profession makes all decisions alone','Lab replaces clinical assessment','Investigations should delay urgent pain relief unnecessarily'],c:0,exp:'Coordinated, scope-respecting teamwork. (Key)'}
+];
+var DIFFS=[{id:'easy',label:'Easy',desc:'Hints + ranges'},{id:'medium',label:'Medium',desc:'Some hints'},{id:'hard',label:'Hard',desc:'Few hints'},{id:'devil',label:'Devil Mode',desc:'No ranges, traps'}];
+/* ---------- state ---------- */
+var G=null;
+function fresh(){return{userId:'',name:'',phone:'',discipline:'medicine',diff:'easy',
+ score:0,hist:0,inv:0,diff_:0,final:0,safe:0,hints:0,
+ M:{abc:0,glu:0,fix:0,rea:0,hx:0,ex:0,ord:0,read:0,ack:0},
+ diffPick:null,diffDone:0,finalPick:'',finalDone:0,
+ released:{},GATE:0,FINALREADY:0,crit:{sent:0,ack:0,msg:null},
+ L:{},N:{},P:{},H:{},I:{},PH:{},R:{},
+ quiz:0,quizStep:0,quizDone:0,tAns:{},audit:[],clock:TL.arrive,started:0,ver2:1,pq:{step:0,ans:{},done:0},qtime:{col:{},dq:{},pq:{}}};}
+try{var sv=JSON.parse(localStorage.getItem('cd-diag:'+CFG.game)||'null');G=(function(){var b=fresh();
+ if(sv){
+  if(sv.ver2!==1){
+   /* pre-v2 save (contaminated by the old auto-bench bug): keep identity, reset case progress */
+   b.name=sv.name||'';b.phone=sv.phone||'';b.userId=sv.userId||'';b.discipline=sv.discipline||'medicine';b.diff=sv.diff||'easy';b.started=sv.started||0;
+   try{localStorage.setItem('cd-diag:'+CFG.game,JSON.stringify(b));}catch(e2){}
+   console.error('CD-MIGRATE: pre-v2 save reset (identity kept)');
+   return b;
+  }
+  for(var k in sv){b[k]=sv[k];}return b;
+ }
+ return b;})();}catch(e){G=fresh();}
+function save(){try{localStorage.setItem('cd-diag:'+CFG.game,JSON.stringify(G));}catch(e){}}
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]);});}
+var app=document.getElementById('app');
+function voice(t,r){
+ if(!window.STUDYVERSE_TTS)return;
+ try{
+  STUDYVERSE_TTS.speak('narrator',String(t).replace(/<[^>]+>/g,''));
+ }catch(e){}
+}
+function AUL(h,who){if(!G.audit)G.audit=[];var t=G.clock||'';var m=/<span class="time">([^<]+)<\/span>/.exec(String(h));if(m)t=m[1];
+ var txt=String(h).replace(/<span class="time">[^<]*<\/span>/g,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();if(!txt)return;
+ var last=G.audit[G.audit.length-1];if(last&&last.what===txt&&last.t===t)return;
+ G.audit.push({t:t,who:who||'',what:txt.slice(0,220)});if(G.audit.length>400)G.audit.shift();}
+var EVBASE=[['08:15','All','Arrival at Emergency Department — severe bilateral thigh and lower back pain (previously well, no prior diagnosis)'],['08:18','Nursing','Triage — T 37.2°C, HR 108, RR 20, BP 116/72, SpO2 97% RA, pain 9/10, alert']];
+function eventLogBlock(){var rows=(G.audit||[]).slice().reverse().map(function(e){return '<tr><td>'+esc(e.t)+'</td><td>'+esc(e.who)+'</td><td>'+esc(e.what)+'</td></tr>';}).join('');
+ if(!rows)rows='<tr><td colspan="3" class="mut">Events appear here automatically as the case runs.</td></tr>';
+ var bh=EVBASE.slice().reverse().map(function(e){return '<tr><td>'+e[0]+'</td><td>'+esc(e[1])+'</td><td>'+esc(e[2])+'</td></tr>';}).join('');
+ return '<details><summary><b>🕑 Case event log</b> <span class="mut">(auto-recorded — the case moves when YOU act)</span></summary><table><tr><th>Time</th><th>Role</th><th>Event</th></tr>'+bh+rows+'</table></details>';}
+var TERMS=[
+['FBC','Full Blood Count','Screens anaemia (Hb), infection (WBC) and platelets — the first broad sieve in an acute pain crisis.'],
+['Hb','Haemoglobin','8.1 g/dL here — compare with any prior records and the reticulocyte response; do not read a single number alone.'],
+['Retic','Reticulocyte count','9.8 % — the marrow responding; a LOW retic would raise aplastic crisis instead.'],
+['Haemoglobin fractionation','HPLC / electrophoresis','Breaks haemoglobin into its components — the definitive test to identify unusual haemoglobins when anaemia is unexplained.'],
+['Reticulocytosis','High reticulocyte count','A brisk marrow response to anaemia — suggests the marrow is working; in his case with Hb 8.1 and retics 9.8%, a chronic haemolytic picture is suggested.'],
+['ACS','Acute Chest Syndrome','New chest symptoms + hypoxia + a new infiltrate — the most feared complication; screened, not declared here.'],
+['EDTA','Purple-top anticoagulant','Carries the FBC + reticulocyte count. Wrong tube + clotted specimen = results destroyed.'],
+['QC','Quality Control','Internal controls must be in range + flags cleared + verification signed BEFORE release.'],
+['TAT','Turnaround Time','Request-to-result — logged in the case record.'],
+['Bilirubin','Haemolysis marker','34 µmol/L here — read in haemolysis context; causality attributed only with evidence.'],
+['Hydroxyurea','Disease-modifying therapy','Raises HbF and reduces crisis frequency — a long-term discussion, not the acute fix.'],
+['Analgesia','Pain management','Timely, graded, protocol-led — under-treatment of crisis pain is the error to avoid.']
+];
+function glossRows(q){q=String(q||'').toLowerCase();
+ return TERMS.filter(function(t){return !q||t[0].toLowerCase().indexOf(q)>=0||t[1].toLowerCase().indexOf(q)>=0;})
+ .map(function(t){return '<div class="a"><b>'+esc(t[0])+'</b> — <i>'+esc(t[1])+'</i><br><span class="mut">'+esc(t[2])+'</span></div>';}).join('')
+ ||'<p class="mut">No match — try a shorter filter.</p>';}
+function glossBlock(){return '<details><summary><b>🔍 Terms & Abbreviations — searchable glossary</b></summary><input id="glossQ" placeholder="Type to filter — e.g. fluoride, GCS, TAT…" style="width:100%;margin:8px 0"><div id="glossList">'+glossRows('')+'</div></details>';}
+function glossBind(){var gi=el('glossQ'),gl=el('glossList');if(gi&&gl)gi.onkeyup=function(){gl.innerHTML=glossRows(gi.value);};}
+var STEPVIEW={id:null,arr:null,pos:-1,render:null};
+function stepView(state,renderFn,id,hint){
+ var arr=(state&&(state.arr||(state.arr=[])))||[];
+ STEPVIEW.arr=arr;STEPVIEW.render=renderFn;
+ if(STEPVIEW.id!==id){STEPVIEW.id=id;STEPVIEW.pos=arr.length-1;}
+ if(STEPVIEW.pos<0||STEPVIEW.pos>=arr.length)STEPVIEW.pos=arr.length-1;
+ var i=STEPVIEW.pos;
+ var body;
+ if(!arr.length){body='<div class="mut">'+hint+'</div>';}
+ else{
+  var e=arr[i];
+  body='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">'+
+   '<b style="color:var(--acc);white-space:nowrap">Step '+(i+1)+' / '+arr.length+'</b>'+
+   '<span><button class="btn alt" data-nv="-1"'+(i<=0?' disabled':'')+' style="padding:4px 10px;font-size:12px">‹ Previous step</button> '+
+   '<button class="btn alt" data-nv="1"'+(i>=arr.length-1?' disabled':'')+' style="padding:4px 10px;font-size:12px">Next step ›</button>'+
+   '<button class="btn alt" data-nv="last"'+(i===arr.length-1?' disabled':'')+' style="padding:4px 10px;font-size:12px">Latest »</button></span></div>'+
+   '<div class="a" style="line-height:1.7">'+e+'</div>';
+ }
+ return '<div class="chatlog" style="min-height:64px">'+body+'</div>';
+}
+function keepPos(fn){var y=window.scrollY||window.pageYOffset||0;fn();window.scrollTo(0,y);}
+function navBind(){
+ var bs=document.querySelectorAll('[data-nv]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=function(){
+  if(!STEPVIEW.arr||!STEPVIEW.arr.length||!STEPVIEW.render)return;
+  var n=this.dataset.nv;
+  STEPVIEW.pos=(n==='last')?STEPVIEW.arr.length-1:Math.max(0,Math.min(STEPVIEW.arr.length-1,STEPVIEW.pos+(+n)));
+  var y=window.scrollY||window.pageYOffset||0;
+  STEPVIEW.render();
+  window.scrollTo(0,y);
+ };
+}
+function mlsStrip(){var n=0,i;for(i=1;i<=6;i++)if(G.L['b'+i])n++;
+ var cells=[['REQUESTED',!!G.M.ord],['COLLECTED',!!(G.L.verify||G.L.acc)],['RECEIVED',!!G.L.acc],['PROCESSING '+n+'/6',n>=6],['VERIFIED',!!G.L.qc],['RELEASED',!!G.L.rel]];
+ return '<div class="two">'+cells.map(function(c){return '<div class="'+(c[1]?'a':'labr')+'" style="text-align:center;font-weight:800">'+(c[1]?'✅ ':'⬜ ')+c[0]+'</div>';}).join('')+'</div>';}
+var THEMES=[['dark','🌑 Dark (current)'],['light','☀️ Light'],['sunset','🌇 Sunset'],['ocean','🌊 Ocean'],['forest','🌲 Forest']];
+function themeName(){try{return localStorage.getItem('cd-theme')||'dark';}catch(e){return 'dark';}}
+function applyTheme(){var t=themeName();document.body.className=(t==='dark')?'':t;var sel=el('themeSel');if(sel)sel.value=t;}
+function screen(h){
+ applyTheme();
+ var menu='<details id="dotsMenu" style="position:relative"><summary style="list-style:none;cursor:pointer;font-size:20px;padding:2px 10px;border:1px solid var(--mut);border-radius:8px;background:var(--card2)">⋮</summary><div style="position:absolute;right:0;top:110%;z-index:50;background:var(--card);border:1px solid var(--mut);border-radius:10px;padding:10px;min-width:210px;box-shadow:0 6px 20px #0008"><button class="btn alt" id="mShare" style="min-height:40px;margin:4px 0">↗ Share</button><button class="btn alt" id="mMain" style="min-height:40px;margin:4px 0">⌂ Main page</button><button class="btn alt" id="mRestart" style="min-height:40px;margin:4px 0">↺ Restart case</button><button class="btn alt" id="mDelete" style="min-height:40px;margin:4px 0">🗑 Delete progress</button></div></details>';
+ app.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="themeSel" class="themeSel" title="Background mode" aria-label="Background mode" style="flex:1;min-width:120px">'+THEMES.map(function(t){return '<option value="'+t[0]+'">'+t[1]+'</option>';}).join('')+'</select><span style="display:flex;gap:8px;align-items:center;margin-left:auto"><button id="vBtn" class="btn alt" style="width:auto;padding:6px 14px;font-size:13px;margin:0;min-height:36px" title="Narration on/off">🔊</button><button id="mainBtn" class="btn alt" style="width:auto;padding:6px 14px;font-size:13px;margin:0;min-height:36px">⌂ Main page</button>'+menu+'</span></div>'+h;
+ var vb=el('vBtn');
+ if(vb){var vupd=function(){var m=window.STUDYVERSE_TTS&&STUDYVERSE_TTS.muted&&STUDYVERSE_TTS.muted();vb.textContent=m?'🔇':'🔊';};vupd();vb.onclick=function(){if(window.STUDYVERSE_TTS&&STUDYVERSE_TTS.setMuted){STUDYVERSE_TTS.setMuted(!(STUDYVERSE_TTS.muted&&STUDYVERSE_TTS.muted()));}vupd();};}
+ var mb=el('mainBtn');
+ if(mb)mb.onclick=function(){if(G.started&&G.name)floorPage();else narratorPage(login);};
+ var ts=el('themeSel');
+ if(ts){ts.value=themeName();ts.onchange=function(){var v=ts.value;try{localStorage.setItem('cd-theme',v);}catch(e){}applyTheme();};}
+ glossBind();
+ var sh=el('mShare');
+ if(sh)sh.onclick=function(){
+   var txt='Carpe Diem Diagnosis Engine — Case 02 · Daniel Owusu. My score so far is '+G.score+'/110. The Beauty in the Gnarly.';
+   if(navigator.share){navigator.share({title:'Carpe Diem — Case 02',text:txt,url:location.href}).catch(function(){});}
+   else if(navigator.clipboard){navigator.clipboard.writeText(txt+' '+location.href).catch(function(){});alert('Copied — paste it anywhere to share.');}
+   else alert(txt);
+   var dm=el('dotsMenu'); if(dm)dm.open=false;
+ };
+ var mm=el('mMain'); if(mm)mm.onclick=function(){if(G.started&&G.name)floorPage();else narratorPage(login);};
+ var mr=el('mRestart');
+ if(mr)mr.onclick=function(){if(confirm('Restart the case? All progress for Case 02 on this device is cleared.')){try{localStorage.removeItem('cd-diag:'+CFG.game);}catch(e){}G=fresh();save();pickCourse();}};
+ var md=el('mDelete');
+ if(md)md.onclick=function(){if(confirm('Delete ALL saved progress for Case 02 on this device? This cannot be undone.')){try{localStorage.removeItem('cd-diag:'+CFG.game);}catch(e){}G=fresh();G.name=G.name||'';G.started=0;save();narratorPage(login);}};
+ window.scrollTo(0,0);
+}
+function me(){return DEPTS.find(function(d){return d.id===G.discipline;})||DEPTS[0];}
+function dOf(){return DIFFS.find(function(d){return d.id===G.diff;})||DIFFS[0];}
+function deptCorrect(){var n=0;if(G.dq)for(var k in G.dq){var d=G.dq[k];if(d&&d.ans)for(var q in d.ans)if(d.ans[q])n++;}return n;}
+function deptRatio(){var tot=0,cnt=0;for(var id in DEPTQ){var dst=G.dq&&G.dq[id];if(!dst)continue;var ok2=0;if(dst.ans)for(var x in dst.ans)if(dst.ans[x])ok2++;tot+=ok2/Math.max(1,DEPTQ[id].length);cnt++;}return cnt?tot/cnt:0;}
+function deptPct(){return Math.round(deptRatio()*100);}
+function quizBonus(){return Math.min(10,Math.round((((G.quiz||0)/10)*7+deptRatio()*3)*10)/10);}
+function computeScore(){return Math.max(0,Math.min(110,(G.hist+G.inv+G.diff_+G.final+G.safe)-(G.hints>0?G.hints*3:0)+quizBonus()));}
+function add(cap,n){var MAX={hist:20,inv:25,diff_:20,final:25,safe:10};G[cap]=Math.min(MAX[cap],G[cap]+n);G.score=computeScore();save();}
+function isRel(id){return!!G.released[id];}
+function someRange(){return G.diff!=='hard'&&G.diff!=='devil';}
+function showVal(){return G.diff!=='devil'&&(G.diff!=='hard'||someRange());}
+function rel(id){if(!G.released[id]){G.released[id]=1;relCheck();}}
+function relCheck(){
+ if(isRel('chem')&&!G.crit.sent){G.crit.sent=1;
+  G.crit.msg={t:TL.crit,from:'MLS · Chemistry bench',to:'Requesting clinician (Medicine)',
+   txt:'URGENT RESULT CALL — '+PAT.name+' · chemistry panel released '+TL.release+' — bilirubin 34 µmol/L in haemolysis context; renal/electrolytes unremarkable. No critical threshold crossed — the urgent-communication loop (time, recipient, message, acknowledgement) is the teaching point. Awaiting acknowledgement.'};
+  AUL('<span class="time">'+TL.crit+'</span> <b>URGENT RESULT CALL placed</b> — chemistry release communicated to the requesting clinician (Medicine).','MLS · Chemistry');
+  voice('Chemistry results released. Urgent communication loop demonstrated. Calling the requesting clinician.','narrator');
+ }
+ if(isRel('film')&&isRel('fbc')&&isRel('rdt')&&isRel('chem')){G.GATE=1;}
+ save();
+}
+function Lpush(k,h){G[k]=(G[k]||'')+'<div class="a">'+h+'</div>';save();}
+function Npush(h){G.N.log=(G.N.log||'')+'<div class="a">'+h+'</div>';save();}
+/* ---------- screens ---------- */
+function narratorPage(done){
+ var fig='<img src="data:image/webp;base64,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" alt="The Carpe Diem" width="170" height="170" style="border-radius:50%;box-shadow:0 0 30px #d4af3766">';
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">THE BEAUTY IN THE GNARLY · Powered by Kingfahd Pappoe</div></div>'+
+ '<div class="card" style="text-align:center"><div style="display:flex;justify-content:center;margin-bottom:10px">'+fig+'</div>'+
+ '<div style="letter-spacing:3px;font-size:11px;color:var(--acc);font-weight:800">YOUR TUTOR</div><h1>Diagnosis Engine · Case 02</h1>'+
+ '<p>Welcome to the Carpe Diem Gaming Experience — Powered by Kingfahd Pappoe.<br>You have come to <b>Carpe Diem Hospital</b>, a teaching hospital in Ghana.<br>One hospital · eleven professions · one patient journey · one shared case record.<br>No department is above another. No one is inferior.</p>'+
+ '<p class="mut">A young man in severe pain has just arrived. Nobody knows why yet — you will <i>earn</i> the answer through investigation, not guess it.</p>'+
+ '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn alt" id="hearBtn" style="flex:1">🔊 Hear Narrator</button><button class="btn" id="introBtn" style="flex:1.4">Enter Carpe Diem Hospital</button></div>'+
+ '<div style="margin-top:8px"><button class="btn ghost" id="tourBtn" style="width:100%">📍 Guided tour<small> Arrows on the real screens — before you enter</small></button></div></div>'+
+ '<div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ var intro='Welcome to the Carpe Diem Gaming Experience, powered by Kingfahd Pappoe. In this case, a previously healthy twenty-three year old man is brought into the emergency department in severe pain, for the first time in his life. No department is above another. Work within your own professional scope, order what your role allows, and the diagnosis will be earned — never handed over.';
+ function say(){voice(intro,'narrator');}
+ say();
+ if(el('hearBtn'))el('hearBtn').onclick=say;
+ el('introBtn').onclick=function(){done();};
+ if(el('tourBtn'))el('tourBtn').onclick=function(){try{CDCoach.start('diag',DIAG_COACH);}catch(e){}};
+ document.addEventListener('pointerdown',function once(){say();document.removeEventListener('pointerdown',once);},{once:true});
+}
+function login(){
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Carpe Diem Hospital · Diagnosis Engine · Case 02</div></div>'+
+ '<div class="card"><h1>Who dares to challenge the case?</h1><p class="mut">Your scores save under this name on this device and the shared leaderboard.</p><label>Display name</label><input id="nm" value="'+esc(G.name)+'"><button class="btn" id="go">Continue — choose your course</button></div>');
+ el('go').onclick=function(){G.name=el('nm').value.trim()||'Student';G.phone='';G.userId=(G.name.toLowerCase().replace(/[^a-z0-9]/g,'')||'guest');save();pickCourse();}; var nm=el('nm'); if(nm){nm.focus(); nm.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault(); el('go').click();}};}
+}
+function pickCourse(){
+ var opts=DEPTS.map(function(d){return '<option value="'+d.id+'"'+(G.discipline===d.id?' selected':'')+'>'+d.ico+' '+d.name+'</option>';}).join('');
+ var dg=DIFFS.map(function(d){return '<button data-diff="'+d.id+'" class="'+(G.diff===d.id?'on':'')+'"><b>'+d.label+'</b><br><span style="font-size:11px">'+d.desc+'</span></button>';}).join('');
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Carpe Diem Hospital · Diagnosis Engine</div></div>'+
+ '<div class="card"><span class="badge">Setup · Year 1 · '+dOf().label+'</span><h1>Which course are you playing as?</h1><p class="mut">One patient, one hospital, all equal.</p>'+
+ '<label>Your course</label><select id="disc">'+opts+'</select><label>Difficulty</label><div class="diffGrid" id="diffs">'+dg+'</div><button class="btn" id="go">Enter Carpe Diem Hospital</button></div>');
+ document.querySelectorAll('[data-diff]').forEach(function(b){b.onclick=function(){G.diff=b.dataset.diff;save();pickCourse();};});
+ el('go').onclick=function(){G.discipline=el('disc').value;G.started=1;save();floorPage();};
+}
+function patientFolder(){
+ return '<details><summary><b>Patient Folder — '+esc(PAT.name)+', 23M, previously well, no known chronic illness, electrical installation apprentice, Ejisu</b></summary><div style="margin-top:10px;line-height:2">'+
+ '<b>Complaint:</b> severe bilateral thigh and lower-back pain since last night (~14 h), the first such episode he can recall.<br>'+
+ '<b>Status:</b> Case 02 — first-presentation acute pain crisis in a previously well young man; diagnosis not yet made.<br>'+
+ '<b>Observations at triage ('+TL.triage+'):</b> afebrile · HR 108/min · BP 116/72 · RR 20/min · SpO2 97 % air · pain 9/10 (bilateral thighs + lower back)<br>'+
+ '<b>Companion:</b> an accompanying relative (name not recorded in the case data) — anxious, cooperative, gives a partial history.<br>'+
+ '<span class="mut">The folder shows only what is reasonably known at this time. Laboratory content appears inside your station, only on its release event.</span></div></details>';
+}
+function floorPage(){
+ var act=DEPTS.slice(0,8),off=DEPTS.slice(8);
+ var cards=act.map(function(d){var isMe=d.id===G.discipline;
+  return '<div class="dept'+(isMe?' me':'')+'"><div class="ico">'+d.ico+'</div><h3>'+esc(d.name)+'</h3><p>'+(isMe?'YOUR STATION':esc(d.desc))+'</p><button class="btn '+(isMe?'':'alt')+'" data-play="'+d.id+'">'+(isMe?'Play here':'👁 Watch')+'</button></div>';}).join('');
+ var offc=off.map(function(d){return '<div class="dept off"><div class="ico">'+d.ico+'</div><h3>'+esc(d.name)+'</h3><p>'+esc(d.desc)+'</p></div>';}).join('');
+ var crit='';
+ if(G.crit.sent&&!G.crit.ack)crit='<div class="crit">📞 <b>URGENT RESULT CALL WAITING ('+TL.crit+')</b> from MLS — requesting clinician acknowledgement required. Open the Medicine station and acknowledge.</div>';
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">'+me().ico+' '+me().name+' · '+dOf().label+'</div><button class="btn alt" id="homeBtn" style="margin-top:8px">← change selection</button></div>'+
+ crit+
+ '<div class="card"><span class="badge">Case 02 · '+dOf().label+'</span><h1>Carpe Diem Hospital — Ward Round</h1><p class="mut">Open your station to see the Patient Folder and play the case.</p></div>'+eventLogBlock()+
+ '<div class="card"><h2>Active stations — this patient needs them</h2><p class="mut">Play = your station, next page in this tab. Watch = the same detail for other courses.</p><div class="gr">'+cards+'</div></div>'+
+ '<div class="card"><h2>Not needed for this patient — not unimportant</h2><div class="gr">'+offc+'</div></div>'+
+ '<div class="card"><div class="two"><button class="btn'+(G.GATE?'':' alt')+'" id="finalBtn">🏁 FINAL DIAGNOSIS gate</button><button class="btn alt" id="lbBtn">🏆 Leaderboard</button><button class="btn alt" id="rstBtn">↺ Restart case</button><button class="btn alt" id="tutBtn">❓ Tutorial</button></div><p class="mut">'+(G.GATE?'The gate is OPEN — you earned it.':'Locked until: emergency corrected + reassessed · all four bench tests released · differential committed.')+'</p>'+(G.finalDone?'<button class="btn" id="pqBtn">🦠 Post-diagnosis Examination · 15 Q</button>':'')+(G.discipline!=='medicine'&&G.dq&&G.dq[G.discipline]&&G.dq[G.discipline].done?'<button class="btn" id="dxBtn">🩺 Doctor'+String.fromCharCode(39)+'s Diagnosis</button>':'')+'</div>'+
+ '<div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ document.querySelectorAll('[data-play]').forEach(function(b){b.onclick=function(){var id=b.dataset.play;if(id===G.discipline){stationPage(id);}else{watchPage(id);}};});
+ if(el('finalBtn'))el('finalBtn').onclick=finalPage;
+ if(el('lbBtn'))el('lbBtn').onclick=leaderboardPage;
+ if(el('homeBtn'))if(el('pqBtn'))el('pqBtn').onclick=postQuizPage;
+ if(el('dxBtn'))el('dxBtn').onclick=doctorDxPage;
+ el('homeBtn').onclick=pickCourse;
+ if(el('rstBtn'))el('rstBtn').onclick=function(){if(confirm('Restart the case? All progress for Case 02 on this device is cleared.')){try{localStorage.removeItem('cd-diag:'+CFG.game);}catch(e){}G=fresh();save();pickCourse();}};
+ var tb=el('tutBtn'); if(tb) tb.onclick=function(){try{CDCoach.start('diag',DIAG_COACH);}catch(e){}};
+ setTimeout(function(){ if (window.CDCoachActive) return; try{CDCoach.maybe('diag',DIAG_COACH);}catch(e){} },800);
+ voice('Back on the ward round of Carpe Diem Hospital. One patient. Eight stations open. Nothing handed over.','narrator');
+}
+function watchPage(id){
+ var d=DEPTS.find(function(x){return x.id===id;});
+ var txt={medicine:'Medicine carries the emergency workflow: lead the pain-first pathway — prompt protocol analgesia, trigger screen, complication screening (ACS/aplastic/sepsis), evidence-first differential, criteria-based FINAL call.',
+ nursing:'Nursing owns triage with pain scoring, observation trends, analgesia support and reassessment, hydration balance, escalation red flags, structured handover, and family support.',
+ mls:'MLS runs the complete service walk: verify the STAT request · pre-analytical checks · accessioning · centrifuge · FBC + reticulocyte bench · chemistry (renal/electrolytes/bilirubin) · morphology/haemolysis context review with real timings · QC · verification · RELEASE REPORT · urgent-result call fired automatically.',
+ pharmacy:'Pharmacy reconciles the medication history (home analgesics + herbal), reviews allergy, checks opioid/NSAID precautions and monitoring per protocol, renal/hydration checks, and prepares discharge counselling.',
+ herbal:'Herbal takes a respectful product history — name, plant part, preparation, dose, duration, last taken — assesses what can and cannot be concluded, flags safety questions to the treating team without a blame claim, and never delays emergency care.',
+ imaging:'Imaging stays available. A chest film is ordered ONLY on a justified clinical question, for example respiratory deterioration. Ordering scans without a question is a safety trap, not thoroughness.',
+ physio:'Physio joins AFTER stabilisation — breathing exercises, safe first mobilisation, endurance and return-to-work planning.',
+ rehab:'Rehab looks at function and participation after stabilisation; no long-term impairment is assumed from an acute collapse.'};
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">'+d.ico+' '+d.name+' · Watch mode</div></div>'+
+ '<div class="card"><div style="letter-spacing:3px;font-size:11px;color:var(--acc);font-weight:800">YOUR TUTOR</div><h1>'+d.ico+' '+d.name+'</h1><p>'+esc(txt[id]||'This case does not activate this department.')+'</p><button class="btn" id="backW">← Return to Hospital Floor</button></div>'+
+ '<div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ voice((txt[id]||'Watch mode.'),'narrator');
+ el('backW').onclick=floorPage;
+}
+/* ---------- station shell ---------- */
+function stationShell(title,body,param){
+ var crit=G.crit.sent&&!G.crit.ack?'<div class="crit">📞 CRITICAL CALL <span class="time">'+G.crit.msg.t+'</span> — '+esc(G.crit.msg.txt)+' '+(me().id==='medicine'?'ACKNOWLEDGE it below.':'Awaiting Medicine acknowledgement.')+'</div>':'';
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">'+me().ico+' '+me().name+' · '+dOf().label+'</div><button class="btn alt" id="homeBtn" style="margin-top:8px">← Return to Hospital Floor (change selection)</button></div>'+
+ crit+
+ '<div class="card"><details open><summary><b>Patient Folder</b></summary><div>'+patientFolder()+'</div></details>'+glossBlock()+'</div>'+
+ '<div class="card"><span class="badge">Case 02 · Daniel Owusu · 23M · Diagnosis not yet made</span><h1>'+title+'</h1>'+body+'</div>'+eventLogBlock()+
+ '<div class="card refw"><h2>📚 Reference — abbreviations, values, why</h2>'+refSheet()+'</div>'+
+ '<div class="card"><h2>Shared case record — score so far</h2>'+scoreRow()+'</div>'+
+ '<div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ if(el('homeBtn'))el('homeBtn').onclick=floorPage;
+ glossBind();
+}
+function scoreRow(){
+ return '<table><tr><th>History / 20</th><th>Investigations / 25</th><th>Differential / 20</th><th>Final / 25</th><th>Safety / 10</th><th>Hints</th><th>Total</th></tr>'+
+ '<tr><td>'+G.hist+'</td><td>'+G.inv+'</td><td>'+G.diff_+'</td><td>'+G.final+'</td><td>'+G.safe+'</td><td>'+(G.hints?('−'+(G.hints*3)):'0')+'</td><td><b>'+G.score+'</b> / 110</td></tr></table><div class="bar"><i style="width:'+Math.min(100,Math.round(G.score/110*100))+'%"></i></div><div class="mut" style="font-size:11px">Quiz bonus: +'+quizBonus()+' · college quiz '+G.quiz+'/10 · course quiz '+deptPct()+'%</div>';
+}
+function refSheet(){
+ var rows='';
+ if(isRel('fbc'))rows+='<tr><td>Haemoglobin</td><td>reference range 13–17 g/dL g/dL</td><td>8.1 g/dL</td></tr><tr><td>MCV</td><td>80-100 fL</td><td>88 fL</td></tr><tr><td>WBC</td><td>4.0-11.0 x10^9/L</td><td>12.1 (mild)</td></tr><tr><td>Platelets</td><td>150-400 x10^9/L</td><td>385</td></tr><tr><td>Reticulocytes</td><td>0.5-2.5 %</td><td>9.8 % (marrow response)</td></tr>';
+if(isRel('chem'))rows+='<tr><td>Creatinine</td><td>60-110 µmol/L</td><td>82 µmol/L</td></tr><tr><td>Sodium</td><td>135-145 mmol/L</td><td>138 mmol/L</td></tr><tr><td>Potassium</td><td>3.5-5.0 mmol/L</td><td>4.2 mmol/L</td></tr><tr><td>Total bilirubin</td><td>3-17 µmol/L</td><td>34 µmol/L (haemolysis context)</td></tr>';
+ 
+ 
+ if(!rows)rows='<tr><td colspan="3">— your result — appears only when the bench releases it.</td></tr>';
+ return '<details><summary><b>Reference values (adult, teaching ranges — labs vary: check locally)</b></summary><table><tr><th>Test</th><th>Normal</th><th>— your result —</th></tr>'+rows+'</table></details>'+(DEPTNOTES[G.discipline]?deptNotesBlock(G.discipline):'');
+}
+/* ---------- MEDICINE ---------- */
+function medStation(){
+ var M=G.M;
+ var body='<div class="order"><b>WARD ROUND — MEDICINE</b><br>Handover: “Previously well 23-year-old man, first severe bilateral thigh and lower-back pain, started last night.” Priorities: prompt pain assessment and analgesia, focused history/exam, build the pattern (FBC, reticulocytes, bilirubin, renal/electrolytes), rule out the dangerous and the common, interpret the whole patient — not any one number. Do not reflex-test for malaria without indication.</div>'+
+ '<div class="chatlog">'+stepView(G.M,medStation,'medicine','Begin with rapid assessment and pain triage priorities.')+'</div>'+
+ '<div class="two">'+
+ '<button class="btn alt" data-cmd="ABC"'+(M.abc?' disabled':'')+'>1 • ABCDE + initial observations</button>'+
+ '<button class="btn alt" data-cmd="GLU"'+((M.abc&&!M.glu)?'':' disabled')+'>2 • Pain assessment (severity/function)</button>'+
+ '<button class="btn alt" data-cmd="FIX"'+((M.glu&&!M.fix)?'':' disabled')+'>3 • Prompt analgesia plan (per protocol)</button>'+
+ '<button class="btn alt" data-cmd="REA"'+((M.fix&&!M.rea)?'':' disabled')+'>4 • Reassess pain/response</button>'+
+ '<button class="btn alt" data-cmd="HX"'+((M.rea&&!M.hx)?'':' disabled')+'>5 • Focused VOC/complication history</button>'+
+ '<button class="btn alt" data-cmd="EX"'+((M.hx&&!M.ex)?'':' disabled')+'>6 • Focused examination & red-flag screen</button>'+
+ '<button class="btn alt" data-cmd="ORD"'+((M.ex&&!M.ord)?'':' disabled')+'>7 • Targeted investigations → MLS</button>'+
+ '<button class="btn alt" data-cmd="READ"'+(M.ord?'':' disabled')+'>8 • Read released results & interpret vs baseline</button>'+
+ '<button class="btn alt" data-cmd="HNO"'+(G.N.triage?'':' disabled')+'>8b • Nursing observations/handover (attributed)</button>'+
+ '<button class="btn alt" data-cmd="DIFF">9 • Differential gate</button>'+
+ '<button class="btn alt" data-cmd="ACK"'+((G.crit.sent&&!G.crit.ack)?'':' disabled')+'>🔔 Acknowledge critical/urgent communication</button>'+
+ ((G.finalPick==='ok'&&!G.M.dq)?'<div><button class="btn" id="toDqM">📘 Medicine departmental notes + quiz</button></div>':'')+
+ '</div>'+
+ '<details><summary><b>Key reminders</b></summary><div>Severe bilateral thigh and lower-back pain without trauma, marked anaemia with brisk reticulocytosis — the picture suggests a haemolytic crisis; build the full picture: FBC, reticulocytes, bilirubin, renal/electrolytes. No routine oxygen if normoxic, no routine transfusion, no routine malaria testing without independent indication. Escalate chest symptoms/desaturation, fever, neurologic deficit, acute Hb fall/low retics, focal bone/joint signs or instability.</div></details>';
+ stationShell('Medicine — Emergency Assessment',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){return function(){medCmd(k);};})(bs[i].dataset.cmd);
+ deptBind();navBind();
+}
+function medCmd(c){
+ var M=G.M;
+ if(c==='ABC'){M.abc=1;G.clock=TL.triage;save();add('safe',3);
+  Mlog('<span class="time">'+TL.triage+'</span> <b>ABCDE/initial obs:</b> Airway patent, speaking. Breathing: RR 20, SpO₂ 97% on room air, no chest pain/cough/dyspnoea. Circulation: HR 108, BP 116/72, warm peripheries. Disability: alert, oriented, distressed by pain. Exposure: T 37.2°C, no rash/bleeding, no focal deficit reported. Pain 9/10 bilateral thighs/lower back.');
+  voice('Airway breathing circulation disability exposure assessed. Alert but in severe pain. No respiratory distress, oxygen saturation ninety seven percent on room air.','narrator');medStation();}
+ else if(c==='GLU'){M.glu=1;G.clock=TL.glu;save();add('hist',4);
+  Mlog('<span class="time">'+TL.glu+'</span> <b>Pain assessment:</b> Deep, aching, progressive pain for ~14 hours (9/10), bilateral thighs and lower back, similar to prior sickle-cell crises; limits movement. Home medicines gave little relief; reduced oral intake. Function and reassessment plan documented.');
+  voice('Pain assessed: nine out of ten, deep aching pain in both thighs and lower back for about fourteen hours, similar to prior episodes.','narrator');medStation();}
+ else if(c==='FIX'){M.fix=1;G.clock=TL.dxt;save();add('safe',4);
+  Mlog('<span class="time">'+TL.dxt+'</span> <b>Analgesia/support plan (per protocol):</b> Prompt individualised analgesia initiated with reassessment schedule; hydration assessed clinically (encourage oral intake if able; avoid indiscriminate fluids). No routine oxygen indicated (SpO₂ 97%). Drug choices/doses/routes must follow current institutional/Ghana protocol and pharmacy review.');
+  voice('Prompt analgesia plan initiated per protocol with reassessment. Hydration assessed. No routine oxygen indicated.','narrator');medStation();}
+ else if(c==='REA'){M.rea=1;G.clock=TL.rea;save();add('inv',4);
+  Mlog('<span class="time">'+TL.rea+'</span> <b>Reassessment:</b> Pain improving modestly with treatment but still significant; observations stable (afebrile, SpO₂ 97% RA, no chest symptoms, no new neurologic signs). Continue monitoring pain, function, sedation/respiratory status as relevant, and screen for complications.');
+  voice('Reassessment: pain modestly improved, observations stable, no chest symptoms or new neurologic signs. Continue monitoring and complication screening.','narrator');medStation();}
+ else if(c==='HX'){M.hx=1;G.clock=TL.hx;save();add('hist',8);
+  Mlog('<span class="time">'+TL.hx+'</span> <b>Focused history:</b> Previously well; no known regular medicines; first severe bilateral thigh and lower-back pain ~14 h ago, sudden onset during light exercise. No prior similar episodes, no known chronic illness. Home paracetamol/ibuprofen helped little. Reduced oral intake. Denies fever, chest pain, cough, dyspnoea, headache, weakness, abdominal pain, priapism, trauma. Allergies NKDA recorded (confirm).');
+  voice('Focused history taken. First-ever severe thigh and lower-back pain, sudden onset during light exercise, no prior similar episode, previously well, no known chronic illness. No fever, chest pain, breathlessness, neurologic deficit, or priapism. Medication reconciliation needed — he reports only over-the-counter painkillers.','narrator');medStation();}
+ else if(c==='EX'){M.ex=1;save();add('hist',6);
+  Mlog('<span class="time">'+G.clock+'</span> <b>Focused examination:</b> Distressed by pain; chest clear, no respiratory distress; cardiovascular stable; abdomen soft, no splenic/hepatic tenderness flagged; no focal neurologic deficit; limbs/back tender consistent with VOC, no focal swelling/erythema/deformity suggesting fracture/osteomyelitis at baseline. Hydration status assessed.');
+  voice('Focused examination complete. Severe pain, no focal neurologic deficit, chest clear, cardiovascular stable. The full picture is not yet clear — investigation is next.','narrator');medStation();}
+ else if(c==='ORD'){M.ord=1;G.clock=TL.ord;save();add('inv',8);
+  Mlog('<span class="time">'+TL.ord+'</span> <b>Targeted investigations ordered (clinical question-driven):</b> FBC and reticulocyte count (compare with baseline/trend), renal function/electrolytes and bilirubin as indicated. No routine malaria testing without independent indication; no routine imaging/chest X-ray in absence of respiratory/chest signs. Specimens labelled/handled per protocol.');
+  voice('Targeted investigations ordered: full blood count, reticulocyte count, and indicated chemistry. No routine malaria testing without an independent indication.','narrator');medStation();}
+ else if(c==='READ'){
+  if(!isRel('fbc')&&!isRel('chem')&&!isRel('rdt')&&!isRel('film')){
+   Mlog('<div class="labr">Results will appear once the laboratory workflow is completed and released. Continue clinical reassessment and complication screening in parallel.</div>');
+   voice('Results will appear once the laboratory releases them. Continue reassessment and complication screening.','narrator');
+  }else{
+   M.read=1;G.clock=TL.release;save();add('inv',8);
+   var out='<b>Released results (interpret against baseline & context):</b><br>';
+   LABS.forEach(function(lb){out+='<b>'+lb.name+'</b> — released <span class="time">'+lb.time+'</span><br>'; lb.rows.forEach(function(r){out+='• '+esc(r[0])+': <b>'+esc(r[1])+'</b>'+(someRange()?' <span class="mut">['+esc(r[2])+']</span>':'')+'<br>';});});
+   out+='<br><span class="mut">Hb 8.1 g/dL near baseline (reference range 13–17 g/dL); reticulocytes 9.8% suggest marrow response. No acute severe fall shown. Correlate clinically and with trends.</span>';
+   Mlog(out);
+   voice('Results released. Haemoglobin is markedly low. Reticulocytes are elevated, consistent with an appropriate marrow response. Interpret in clinical context.','narrator');
+  }
+  medStation();
+ }
+ else if(c==='HNO'){if(G.N.triage&&!M.hno){M.hno=1;save();add('hist',4);
+   var nh='<div class="a"><span class="time">'+(G.N.hand?TL.ack:TL.triage)+'</span> <b>Nursing observations/handover (attributed):</b> triage and pain/obs documented, interventions and reassessments timed, hydration and safety monitored'+(G.N.hand?' • structured handover delivered':' • handover pending')+'. <span class="mut">Attribution: bedside observations and responses are nursing-documented and communicated to the team.</span></div>';
+   Mlog(nh); voice('Nursing observations retrieved and attributed.','narrator');
+ } medStation();}
+ else if(c==='DIFF'){diffPage();}
+ else if(c==='ACK'){if(G.crit.sent&&!G.crit.ack){G.crit.ack=1;M.ack=1;G.clock=TL.ack;save();add('inv',3);
+   Mlog('<span class="time">'+TL.ack+'</span> <b>Acknowledged:</b> Urgent/critical communication received and documented (time, recipient, message, action).');
+   voice('Urgent communication acknowledged and documented.','narrator');
+ } medStation();}
+ else medStation();
+}
+function Mlog(h){G.Mlog=(G.Mlog||'')+'<div class="a">'+h+'</div>';G.M.arr=(G.M.arr||[]);G.M.arr.push(h);if(G.M.arr.length>300)G.M.arr.shift();
+ if(STEPVIEW.arr===G.M.arr)STEPVIEW.pos=G.M.arr.length-1;save();AUL(h,'Medicine');}
+/* ---------- differential ---------- */
+function diffPage(){
+ var picks=G.diffPick||{};
+ var opts=DIFFS_CASE.map(function(d){return '<button class="opt'+(picks[d.id]?' on':'')+'" data-dif="'+d.id+'">'+esc(d.label)+'</button>'+
+ ((picks[d.id]&&G.diffDone)?'<div class="stage mut">For: '+esc(d.f)+'<br>Against: '+esc(d.a)+'</div>':'');}).join('');
+ var done=G.diffDone?'<div class="a"><b>Differential committed</b> — for/against reasoning is in the shared record.</div>'+(G.GATE?'<button class="btn" id="toFinal">→ Proceed to the FINAL gate</button>':'<div class="warn">Not all bench evidence is released — the final gate stays closed.</div>'):'<button class="btn" id="commitD">Commit differential</button>';
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Case 02 · Differential gate · '+dOf().label+'</div></div>'+
+ '<div class="card"><h1>🧠 Differential — build it with evidence</h1><p class="mut">Select the possibilities you will defend (at least two), then commit. Naming the leading one <i>with released evidence</i> earns the differential score; naming without evidence does not.</p>'+opts+done+
+ '<button class="btn alt" id="bk">← back</button></div>');
+ var bs=document.querySelectorAll('[data-dif]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=function(){var id=this.dataset.dif;picks[id]=!picks[id];this.classList.toggle('on');G.diffPick=picks;save();diffPage();};
+ var cb=el('commitD');
+ if(cb)cb.onclick=function(){
+  var n=0;for(var k in picks){if(picks[k])n++;}
+  if(n<2){alert('A differential is a comparison — choose at least two.');return;}
+  G.diffPick=picks;G.diffDone=1;save();
+  var ok=DIFFS_CASE.some(function(d){return picks[d.id]&&d.ok;});
+   AUL('<b>Differential committed</b> — possibilities weighed with for/against reasoning; leading pick '+(ok?'is supported by released evidence':'lacks this evidence'),'Medicine');
+  add('diff_',ok?20:8);
+  if(ok){G.FINALREADY=1;}
+  save();
+  voice(ok?'Differential committed. The leading possibility stands with released evidence behind it.':'Differential committed. Without the leading possibility, the score reflects an unsupported pick.','narrator');
+  diffPage();
+ };
+ var tf=el('toFinal');if(tf)tf.onclick=finalPage;
+ el('bk').onclick=function(){if(G.discipline==='medicine')medStation();else floorPage();};
+}
+/* ---------- FINAL gate ---------- */
+function finalPage(){
+ var ready=G.FINALREADY&&G.diffDone&&G.GATE;
+ var body;
+ if(!ready){
+  body='<h1>🏁 FINAL DIAGNOSIS gate</h1><p class="mut">Locked. The gate opens when the case has earned it:</p>'+
+  '<table><tr><th>Condition</th><th>Status</th></tr>'+
+  '<tr><td>Emergency corrected AND consciousness reassessed</td><td>'+(G.M.rea?'✅':'⬜')+'</td></tr>'+
+  '<tr><td>All four bench tests RELEASED (FBC · chemistry · investigation · film)</td><td>'+(G.GATE?'✅':'⬜')+'</td></tr>'+
+  '<tr><td>Differential committed with evidence</td><td>'+(G.diffDone?'✅':'⬜')+'</td></tr></table>';
+ }else{
+  var opts=FINALS.map(function(o){var cls='opt';if(G.finalPick===o.id)cls+=o.ok?' ok':' no';return '<button class="'+cls+'" data-fin="'+o.id+'">'+esc(o.label)+'</button>';}).join('');
+  body='<h1>🏁 FINAL DIAGNOSIS</h1><p class="mut">Select the statement best supported by ALL released evidence:</p>'+opts;
+  if(G.finalPick==='ok'){
+   body+='<div class="a"><b>EARNED.</b> Acute vaso-occlusive pain episode (VOC) in newly diagnosed sickle cell disease (HbSS) — previously undiagnosed; complications screened and under assessment.<br><b>Severity criteria met:</b> '+esc(SEV_MET)+'<br>'+esc(SEV_WATCH)+'</div><button class="btn" id="toQ">🧪 Interprofessional Quiz — 10 MCQ + 3 theory</button>';
+  }else if(G.finalPick){
+   body+='<div class="labr">❌ Not supported by the released evidence%s. The guardrail stands: the initial data alone never earn a complication designation — complication was an uncorrected contributor at 10:02.</div>';
+   body=body.replace('%s','');
+  }
+ }
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Case 02 · FINAL gate · '+dOf().label+'</div></div>'+
+ '<div class="card">'+body+'</div><div class="card"><button class="btn alt" id="hBtn">← Return to Hospital Floor</button></div>'+
+ '<div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ var bs=document.querySelectorAll('[data-fin]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=function(){var id=this.dataset.fin;var o=null;for(var j=0;j<FINALS.length;j++)if(FINALS[j].id===id)o=FINALS[j];
+  G.finalPick=id;save();
+   AUL('<b>FINAL DIAGNOSIS gate</b> — '+(o.ok?'designation EARNED on released, criteria-based evidence':'attempted pick not supported by the released evidence'),'Medicine');
+  voice(o.ok?'Earned. Acute vaso-occlusive pain episode in newly diagnosed sickle cell disease — HbSS confirmed on fractionation. Complications screened and under assessment.':'Not supported by the released evidence. The guardrail stands — the initial data alone never earn a complication designation.','narrator');
+  if(o.ok&&!G.finalDone){G.finalDone=1;add('final',25);add('safe',10);saveToServer();}
+  else if(!o.ok){add('safe',2);}
+  finalPage();
+ };
+ if(el('toQ'))el('toQ').onclick=quizPage;
+ el('hBtn').onclick=floorPage;
+}
+/* ---------- doctor's diagnosis (non-Medicine reveal) ---------- */
+function doctorDxPage(){
+ if(G.discipline==='medicine'||!(G.dq&&G.dq[G.discipline]&&G.dq[G.discipline].done)){floorPage();return;}
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">The doctor’s diagnosis · shared with the team</div></div>'+
+ '<div class="card"><h1>🩺 The Doctor’s Diagnosis</h1>'+
+ '<div class="a"><b>EARNED.</b> Acute vaso-occlusive pain episode (VOC) in newly diagnosed sickle cell disease (HbSS) — previously undiagnosed; complications screened and under assessment.<br><b>Severity criteria met:</b> '+esc(SEV_MET)+'<br>'+esc(SEV_WATCH)+'</div>'+
+ '<p class="mut">Shared with your profession now that you have completed your contribution. The diagnosis was earned on released, criteria-based evidence — not guessed. Your department’s work was part of the evidence chain that made it possible.</p>'+
+ '<button class="btn" id="toQ">🧪 Interprofessional Quiz — 10 MCQ + 3 theory</button>'+
+ '<button class="btn" id="pqBtn">🦠 Post-diagnosis Examination · 15 Q</button>'+
+ '<button class="btn alt" id="bk">← Return to Hospital Floor</button></div>');
+ voice('The doctor'+String.fromCharCode(39)+'s diagnosis. Acute vaso-occlusive pain episode in known HbSS, uncomplicated at baseline. Complications screened and under assessment. Earned on released evidence, not guessed.');
+ el('toQ').onclick=quizPage;
+ el('pqBtn').onclick=postQuizPage;
+ el('bk').onclick=floorPage;
+}
+/* ---------- quiz ---------- */
+function quizPage(){
+ if(G.quizStep>=13){debriefPage();return;}
+ if(G.quizStep<10){
+  var q=QUIZ[G.quizStep];G.qtime=G.qtime||{col:{},dq:{},pq:{}};G.qtime.col[G.quizStep]=Date.now();
+  screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">General Interprofessional Quiz · MCQ '+(G.quizStep+1)+' / 15</div></div>'+
+  '<div class="card"><h1>🧪 General Interprofessional Quiz — one case, every course</h1><div class="q"><b>Q'+(G.quizStep+1)+'.</b> '+esc(q.q)+'</div>'+q.a.map(function(o,i){return '<button class="opt" data-q="'+i+'">'+esc(o)+'</button>';}).join('')+
+  '<button class="btn alt" id="bk">← back</button></div>');
+  var bs=document.querySelectorAll('[data-q]');
+  for(var i=0;i<bs.length;i++)bs[i].onclick=function(){
+   var ok=(+this.dataset.q===q.c);if(ok)G.quiz++;G.tAns['mcq'+G.quizStep]=ok;G.qtime.col[G.quizStep+':s']=Math.max(1,Math.round((Date.now()-(G.qtime.col[G.quizStep]||Date.now()))/1000));G.score=computeScore();save();
+   voice((ok?'Correct. ':'Not quite. ')+q.exp,'narrator');
+   screen('<div class="card"><div class="'+(ok?'a':'labr')+'">'+(ok?'✅ Correct.':'❌ Not quite.')+' '+esc(q.exp)+'</div><button class="btn" id="nx">Next</button></div>');
+   el('nx').onclick=function(){keepPos(function(){G.quizStep++;save();quizPage();});};
+  };
+  el('bk').onclick=floorPage;
+ }else{
+  var t=THEORY[G.quizStep-10];
+  screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">General Interprofessional Quiz · Theory '+(G.quizStep-14)+' / 3</div></div>'+
+  '<div class="card"><h1>🧪 General Interprofessional Quiz</h1><div class="q">'+esc(t.t)+'</div>'+
+  (G.quizStep===10?'<details><summary>Show worked example</summary>'+esc(t.model)+'</details>':'<textarea id="ta" rows="6">'+esc((G.tAns['th'+G.quizStep])||'')+'</textarea><button class="btn alt" id="svT">Save answer</button>')+
+  '<button class="btn" id="nx">Next</button><button class="btn alt" id="bk">← back</button></div>');
+  if(el('svT'))el('svT').onclick=function(){G.tAns['th'+G.quizStep]=el('ta').value;save();};
+  el('nx').onclick=function(){keepPos(function(){G.quizStep++;if(G.quizStep>=13){G.quizDone=1;saveToServer();}save();quizPage();});};
+  el('bk').onclick=floorPage;
+ }
+}
+var DEPTQ={
+ medicine:[
+  {q:'HbS results from which molecular change?',a:['Substitution of valine for glutamic acid at position 6 of the beta-globin chain','Deletion of one alpha-globin gene','Lysine for glycine in alpha-globin','Reduced delta-globin synthesis'],c:0,exp:'Glu→Val at beta-6. (Key)'},
+  {q:'Best initial interpretation of Daniel\'s baseline presentation?',a:['Acute vaso-occlusive pain episode in known HbSS','ACS established by limb pain alone','Osteomyelitis established','Isolated thigh pain = stroke'],c:0,exp:'Typical uncomplicated VOC pattern at baseline. (Key)'},
+  {q:'Finding most suggestive of ACS?',a:['New chest symptoms/respiratory findings or new infiltrate concern with hypoxaemia','Persistent thigh pain only','Stable Hb near baseline','Chronic jaundice unchanged'],c:0,exp:'New respiratory/chest features. (Key)'},
+  {q:'Hb 8.1 g/dL in a young man with reticulocytes 9.8% means?',a:['Chronic haemolytic anaemia with compensated marrow — interpret with clinical picture','Proves acute severe blood loss','Mandates transfusion','Excludes all complications'],c:0,exp:'Compare to clinical context. (Key)'},
+  {q:'Aplastic crisis concern is raised by?',a:['Substantial Hb fall with inappropriately low reticulocyte response','Mild leukocytosis with high retics','Pain improvement','Hb near baseline'],c:0,exp:'Low marrow response with falling Hb. (Key)'},
+  {q:'Why assess for infection in suspected VOC?',a:['Infection may precipitate or coexist with a painful episode','VOC always gives positive cultures','All patients have sepsis','Pain location excludes infection'],c:0,exp:'Infection can trigger/coexist. (Key)'},
+  {q:'Role of oxygen at SpO2 97% RA in uncomplicated VOC?',a:['Not indicated solely for uncomplicated pain in a normoxic patient','Mandatory for all HbSS','Replaces analgesia','Normalises Hb'],c:0,exp:'Use for hypoxaemia/respiratory indication. (Key)'},
+  {q:'If pain remains severe after initial treatment?',a:['Reassess pain/function/vitals/meds/adverse effects and escalate safely per protocol','Assume drug-seeking and withhold analgesia','Repeat without reassessment','Discharge'],c:0,exp:'Reassess and escalate. (Key)'},
+  {q:'Finding supporting continued urgent evaluation rather than routine discharge?',a:['New focal neurological deficit','Improved pain and stable observations','Adequate intake and mobility','Clear follow-up plan'],c:0,exp:'Neurologic deficit is an emergency. (Key)'},
+  {q:'Routine malaria testing in this clinical context. (Key)'}
+ ],
+ nursing:[
+  {q:'What should be recorded promptly at triage?',a:['Pain score/location/onset, vital signs, SpO2 and relevant history','Only temperature','Only medication requested','Only name and age'],c:0,exp:'Complete early assessment. (Key)'},
+  {q:'Why is self-reported pain important?',a:['Pain is subjective; patient report is central to assessment','Useful only if vitals abnormal','Normal SpO2 invalidates pain','Nurse should assume score'],c:0,exp:'Patient-centred assessment. (Key)'},
+  {q:'Best documentation to evaluate analgesia response?',a:['Pain score, function, observations, intervention and reassessment time','Drug name only','Improvement without measured reassessment','Pain score only at discharge'],c:0,exp:'Structured reassessment. (Key)'},
+  {q:'Before giving prescribed opioid, verify first:',a:['Patient identity, prescription, allergies, dose/route, relevant history and safety observations','Only medicine appearance','That patient ate fully','That pain <5'],c:0,exp:'Medication safety checks. (Key)'},
+  {q:'Post-opioid finding requiring urgent escalation?',a:['Marked sedation with slow or shallow breathing','Mild pain reduction','Asking for water','Stable RR and alertness'],c:0,exp:'Possible respiratory depression. (Key)'},
+  {q:'Appropriate hydration assessment?',a:['Assess intake, losses, mucous membranes, urine output and clinical volume status','Rapid IV fluids for every patient','Urine colour only','Restrict all oral fluids'],c:0,exp:'Clinical assessment guides fluids. (Key)'},
+  {q:'New chest pain and SpO2 falls to 91% — nurse should:',a:['Urgently assess ABCs, repeat observations, provide oxygen as indicated and escalate immediately','Wait for routine round','Document and continue routine care','Encourage walking'],c:0,exp:'Possible ACS/respiratory emergency. (Key)'},
+  {q:'Difficult to rouse with shallow breathing after opioid — priority:',a:['Call for urgent help, support airway/breathing, monitor and follow opioid toxicity protocol','Give next dose early','Leave to sleep','Offer fluids and reassess in 1 hour'],c:0,exp:'Emergency response. (Key)'},
+  {q:'Communication format for urgent handover?',a:['SBAR: Situation, Background, Assessment, Recommendation','SOAP without assessment','Chronological list without concern','Informal message without observations'],c:0,exp:'Structured handover. (Key)'},
+  {q:'Appropriate discharge instruction?',a:['Explain medication use, hydration plan, follow-up and specific red flags requiring urgent return','Return only if pain 10/10','Complications cannot occur after discharge','Stop all regular medicines once pain improves'],c:0,exp:'Safety-netting and counselling. (Key)'}
+ ],
+ mls:[
+  {q:'Why compare FBC with clinical context in HbSS?',a:['Chronic HbSS can produce persistent abnormalities; change from baseline may be more informative','Reference intervals never useful','Baseline determines genotype','Single FBC establishes cause of pain'],c:0,exp:'Baseline comparison matters. (Key)'},
+  {q:'Reticulocytosis in chronic haemolytic anaemia commonly indicates:',a:['Increased marrow response to ongoing red-cell destruction','Complete cessation of erythropoiesis','Acute platelet destruction','Reduced red-cell turnover'],c:0,exp:'Compensation. (Key)'},
+  {q:'Why can reticulocyte percentage be misleading in anaemia?',a:['Reduced red-cell denominator can inflate percentage; absolute/corrected count adds context','Directly measures plasma Hb','Unaffected by anaemia degree','Measures platelet production'],c:0,exp:'Interpret with anaemia severity. (Key)'},
+  {q:'Markers commonly used to assess haemolysis?',a:['Reticulocyte count, bilirubin, LDH and haptoglobin (as available)','Sodium/potassium/chloride/bicarbonate only','Troponin/amylase/lipase/glucose','Platelets/INR/aPTT/D-dimer only'],c:0,exp:'Haemolysis profile in context. (Key)'},
+  {q:'Peripheral blood film in sickle-cell disease:',a:['May show sickled forms/morphologic changes but does not alone confirm genotype','Replaces fraction analysis in every situation','Reliably quantifies tissue oxygenation','Identifies exact precipitant of every crisis'],c:0,exp:'Morphology aids, genotype needs appropriate testing. (Key)'},
+  {q:'Why can recent transfusion complicate fraction analysis?',a:['Donor red cells can alter measured haemoglobin fractions','Permanently prevents all Hb testing','Donor cells always contain only HbS','Analyser measures platelets instead'],c:0,exp:'Donor/recipient mix. (Key)'},
+  {q:'Marked Hb fall with low reticulocyte response suggests:',a:['Marrow suppression or aplastic crisis, with urgent clinical correlation','Normal compensatory response','Iron overload only','Diagnostic of uncomplicated VOC'],c:0,exp:'Poor marrow response. (Key)'},
+  {q:'Underfilled specimen failing acceptance criteria — correct response?',a:['Follow rejection/acceptance policy, document and promptly request suitable repeat specimen','Top up from another patient','Report with no qualification','Dilute to reach mark'],c:0,exp:'Pre-analytical integrity. (Key)'},
+  {q:'Test useful to assess haemoglobin fractions/genotype support?',a:['Haemoglobin analysis such as HPLC/electrophoresis, interpreted with transfusion history','WBC differential alone','Urine dipstick','Serum creatinine'],c:0,exp:'Fractionation testing. (Key)'},
+  {q:'If transfusion clinically indicated, essential laboratory process?',a:['Compatibility testing and appropriate pre-transfusion identification checks','Issue based on age only','Skip ID checks in emergency','Use most recent sample regardless of identification'],c:0,exp:'Patient safety and compatibility. (Key)'}
+ ],
+ pharmacy:[
+  {q:'Main purpose of medication reconciliation at admission?',a:['Identify current medicines, adherence, allergies, recent doses and potential interactions','Replace regular medicines automatically','Determine diagnosis from list alone','Avoid asking about non-prescription medicines'],c:0,exp:'Safe, accurate med history. (Key)'},
+  {q:'Principle guiding analgesia in severe VOC?',a:['Timely, individualised multimodal analgesia with reassessment under local protocol','Withhold until all investigations complete','One fixed regimen for every patient','Avoid reassessment once dose given'],c:0,exp:'Prompt, reassessed care. (Key)'},
+  {q:'Important before recommending an NSAID?',a:['Renal function, hydration status, gastrointestinal risk and contraindications','Hair colour/handedness','Blood group alone','Tablet vs capsule preference only'],c:0,exp:'NSAID safety review. (Key)'},
+  {q:'Opioid safety issue requiring active monitoring?',a:['Sedation and respiratory depression','Hair loss within minutes','Immediate Hb increase','Prevention of all nausea'],c:0,exp:'Respiratory/CNS monitoring. (Key)'},
+  {q:'Why check duplicate paracetamol-containing products?',a:['Combined use may unintentionally exceed safe total daily dose','Prevents opioid respiratory depression','Improves analgesia without risk','Changes HbSS genotype'],c:0,exp:'Avoid cumulative overdose. (Key)'},
+  {q:'Transfusion in uncomplicated VOC pain?',a:['Not routine solely for uncomplicated pain; separate indication must be established','Every severe pain episode requires exchange transfusion','Used to correct all baseline anaemia','Replaces hydration and analgesia'],c:0,exp:'Indication-based transfusion. (Key)'},
+  {q:'Appropriate discharge counselling point?',a:['Explain dose schedule, maximum limits, adverse effects, safe storage and when to seek help','Double doses if pain returns','Share unused opioids','Stop all disease-modifying treatment without review'],c:0,exp:'Safe use and follow-up. (Key)'},
+  {q:'Key concern when dispensing opioid outpatient?',a:['Clear instructions, limited appropriate supply, secure storage and review of risks','No counselling needed if prescribed','Combine with alcohol for sleep','Share if another person has pain'],c:0,exp:'Risk mitigation. (Key)'},
+  {q:'Why consider renal function when selecting some analgesics?',a:['Renal impairment can affect drug handling and increase toxicity risk','Determines blood group','All analgesics eliminated via lungs only','Creatinine measures pain severity'],c:0,exp:'Dose/safety implications. (Key)'},
+  {q:'Best pharmacy contribution to interprofessional team?',a:['Medication review, evidence-based recommendations, safety monitoring and patient counselling','Make final diagnosis without assessment','Change prescriptions without communication','Restrict analgesia to reduce workload'],c:0,exp:'Collaborative medication expertise. (Key)'}
+ ]
+};
+function deptNotesBlock(id){
+ var procs=DEPTNOTES[id]||[];
+ return '<details><summary><b>Notes</b></summary>'+procs.map(function(p){return '<details><summary><b>'+esc(p.title)+'</b></summary>'+p.subs.map(function(sn){return '<details><summary>'+esc(sn.h)+'</summary><p>'+esc(sn.b)+'</p></details>';}).join('')+'</details>';}).join('')+'</details>';
+}
+function courseNotesBlock(){
+ var seg=DEPTS.map(function(d){return '<details><summary><b>'+d.ico+' '+esc(d.name)+'</b></summary><p>'+esc(courseNote(d.id))+'</p></details>';}).join('');
+ return '<p class="mut" style="margin:8px 0">Every course contributed — tap a title to read its notes.</p>'+seg;
+}
+function deptQuiz(id){
+ if(!DEPTQ[id]){floorPage();return;}
+ var meta={nursing:'🩹 Nursing',mls:'🔬 MLS',pharmacy:'💊 Pharmacy',medicine:'🩺 Medicine'};
+ var label=meta[id];
+ G.dq=G.dq||{};var st=G.dq[id]=G.dq[id]||{start:0,step:0,ans:{},done:0};
+ var body;
+ if(!st.start){body='<h1>'+label+' — Departmental Notes & Quiz</h1>'+deptNotesBlock(id)+'<button class="btn" id="dqGo">I have read the notes — start the quiz</button><button class="btn alt" id="dqBk">← Return to Hospital Floor</button>';}
+ else if(st.step<DEPTQ[id].length){var q=DEPTQ[id][st.step];st.qstart=Date.now();
+  body='<h1>'+label+' — Department Quiz · Q'+(st.step+1)+' / '+DEPTQ[id].length+'</h1><div class="q">'+esc(q.q)+'</div>'+q.a.map(function(o,i){return '<button class="opt" data-dq="'+i+'">'+esc(o)+'</button>';}).join('')+'<button class="btn alt" id="dqHint">💡 Hint (−3)</button><div id="dqHintTxt"></div><button class="btn alt" id="dqBk">← Return to Hospital Floor</button>';}
+ else{body='<h1>'+label+' — Department Quiz complete ✅</h1><p class="mut">Recorded in the shared case record. The full interprofessional debrief waits on the ward-round floor.</p>'+(id!=='medicine'&&G.discipline!=='medicine'?'<button class="btn" id="dqDx">🩺 See the Doctor'+String.fromCharCode(39)+'s Diagnosis</button>':'')+'<button class="btn" id="dqBk">← Return to Hospital Floor</button>';}
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">'+label+' · Departmental Notes & Quiz</div></div>'+
+ '<div class="card">'+body+'</div><div class="card"><h2>Shared case record — score so far</h2>'+scoreRow()+'</div><div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ voice(!st.start?('Departmental notes and a short quiz for '+({nursing:'nursing',mls:'laboratory science',pharmacy:'pharmacy',medicine:'medicine'})[id]+'.'):(st.step<DEPTQ[id].length?('Question '+(st.step+1)+'.'):'Department quiz complete. Well done.'));
+ if(el('dqGo'))el('dqGo').onclick=function(){st.start=1;save();deptQuiz(id);};
+ var dqs=document.querySelectorAll('[data-dq]');
+ for(var i=0;i<dqs.length;i++)dqs[i].onclick=function(){
+  var q=DEPTQ[id][st.step];var w=(+this.dataset.dq===q.c);st.ans[st.step]=w;G.qtime=G.qtime||{col:{},dq:{},pq:{}};G.qtime.dq[id]=G.qtime.dq[id]||{};G.qtime.dq[id][st.step]=Math.max(1,Math.round((Date.now()-(st.qstart||Date.now()))/1000));G.score=computeScore();save();
+  voice((w?'Correct. ':'Not quite. ')+q.exp,'narrator');
+  screen('<div class="card"><div class="'+(w?'a':'labr')+'">'+(w?'✅ Correct.':'❌ Not quite.')+' '+esc(q.exp)+'</div><button class="btn" id="dqNx">Next</button><button class="btn alt" id="dqBk">← Return to Hospital Floor</button></div>');
+  el('dqNx').onclick=function(){keepPos(function(){st.step++;if(st.step>=DEPTQ[id].length){st.done=1;if(id==='nursing')G.N.dq=1;if(id==='mls')G.L.dq=1;if(id==='pharmacy')G.P.dq=1;if(id==='medicine')G.M.dq=1;if(G.finalDone)saveToServer();}save();deptQuiz(id);});};
+  el('dqBk').onclick=floorPage;
+ };
+ if(el('dqHint'))el('dqHint').onclick=function(){
+   var nud={nursing:'Think acuity first: what could harm this patient in the next few minutes? Document and escalate the trend — not the snapshot.',
+            mls:'Think pre-analytical: identity, request, tube, volume, labelling, time — before any analyser is loaded.',
+            pharmacy:'Check indication, dose per kilogram, route and preparation against the actual product before you dispense.',
+            medicine:'Work the ABCDE; correct the reversible threat first, then reassess, then interpret.'};
+   var ns=[nud[id]||'Re-read the question stem carefully — the answer is inside the case evidence.','Consider the steps your profession took in this case, in order.','Rule out the options that break your scope — then choose among what remains.'];
+   G.hints++;G.score=computeScore();save();AUL('<b>Hint used</b> in the '+label+' quiz — (−3)','Quiz');
+   var t=el('dqHintTxt');if(t)t.innerHTML='<div class="a" style="margin-top:8px">💡 '+esc(ns[(G.hints-1)%ns.length])+' <span class="mut">(−3 applied)</span></div>';
+   voice('Hint. '+ns[(G.hints-1)%ns.length],'narrator');
+ };
+ if(el('dqBk'))el('dqBk').onclick=floorPage;
+ if(el('dqDx'))el('dqDx').onclick=doctorDxPage;
+}
+function pqDone(){var n=0;if(G.pq&&G.pq.ans)for(var k in G.pq.ans)if(G.pq.ans[k])n++;return n;}
+function postQuizPage(){
+ if(!G.finalDone){floorPage();return;}
+ G.pq=G.pq||{step:0,ans:{},done:0};var st=G.pq;
+ if(st.step>=POSTQ.length){
+  var sc=pqDone();
+  screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Post-diagnosis examination · disease knowledge</div></div>'+
+  '<div class="card"><h1>Post-diagnosis Examination — complete ✅</h1><p>You scored <b>'+sc+' / '+POSTQ.length+'</b> on the disease-knowledge set. Recorded in your case record.</p><button class="btn" id="bk">← Return to Hospital Floor</button></div>');
+  el('bk').onclick=floorPage;
+  voice('Post-diagnosis examination complete. You scored '+sc+' of '+POSTQ.length+'.');
+  return;
+ }
+ var q=POSTQ[st.step];st.qstart=Date.now();
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Post-diagnosis examination · Q'+(st.step+1)+' / '+POSTQ.length+'</div></div>'+
+ '<div class="card"><h1>🦠 Post-diagnosis Examination — disease knowledge</h1><div class="q"><b>Q'+(st.step+1)+'.</b> '+esc(q.q)+'</div>'+q.a.map(function(o,i){return '<button class="opt" data-pq="'+i+'">'+esc(o)+'</button>';}).join('')+'<button class="btn alt" id="bk">← Return to Hospital Floor</button></div>');
+ voice('Post-diagnosis examination, question '+(st.step+1)+' of '+POSTQ.length+'.');
+ var bs=document.querySelectorAll('[data-pq]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=function(){
+  var w=(+this.dataset.pq===q.c);st.ans[st.step]=w;G.qtime=G.qtime||{col:{},dq:{},pq:{}};G.qtime.pq[st.step]=Math.max(1,Math.round((Date.now()-(st.qstart||Date.now()))/1000));save();
+  voice((w?'Correct. ':'Not quite. ')+q.exp,'narrator');
+  screen('<div class="card"><div class="'+(w?'a':'labr')+'">'+(w?'✅ Correct.':'❌ Not quite.')+' '+esc(q.exp)+'</div><button class="btn" id="nx">Next</button><button class="btn alt" id="bk">← Return to Hospital Floor</button></div>');
+  el('nx').onclick=function(){keepPos(function(){st.step++;if(st.step>=POSTQ.length)st.done=1;save();postQuizPage();});};
+  el('bk').onclick=floorPage;
+ };
+ el('bk').onclick=floorPage;
+}
+function deptBind(){var m={toDqN:'nursing',toDqL:'mls',toDqP:'pharmacy',toDqM:'medicine'};
+ for(var k in m){(function(kk){var b=el(kk);if(b)b.onclick=function(){deptQuiz(m[kk]);};})(k);}}
+function quizSummary(){
+ var tail=G.quizDone?' · 3 theory answered — saved to your case record.':(G.quizStep>=10?' · theory in progress':'');
+ return '<div class="a">🧪 <b>Interprofessional Quiz: '+G.quiz+'/10 MCQ'+tail+'</b></div>';
+}
+/* ---------- debrief ---------- */
+function debriefPage(){
+ var notes=DEPTS.map(function(d){return '<tr><td>'+d.ico+' '+esc(d.name)+'</td><td>'+esc(courseNote(d.id))+'</td></tr>';}).join('');
+ var tl=[['09:58','Arrival — severe bilateral thigh and lower-back pain'],['10:00','Triage — pain 9/10, observations stable'],['10:02','Pain assessment — 9/10, typical crisis'],['10:06','Analgesia per protocol + hydration plan'],['10:14','Reassessment — pain modestly improved, obs stable'],['10:20','Focused history incl. herbal product'],['10:24','Targeted investigations → MLS'],['10:26','Collection — EDTA + serum tubes, labelled'],['10:30','Reception / accessioning'],['10:42','Centrifuge + analyser load'],['10:48','FBC + reticulocyte bench'],['10:54','Chemistry bench (renal/electrolytes/bilirubin)'],['11:06','Morphology/haemolysis context review'],['11:24','Baseline/clinical correlation'],['11:30','Technical verification — QC'],['11:34','RELEASE REPORT — results to Medicine'],['11:36','Urgent result call — communication loop'],['11:38','Acknowledged — loop closed']];
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Debrief · one hospital · one human experience</div></div>'+
+ '<div class="card"><h1>🩺 Debrief — the whole patient journey</h1>'+
+ '<p>Daniel arrived in severe bilateral thigh and lower-back pain — a familiar crisis for him. The first priority you could act on was the pain itself: <b>prompt protocol analgesia → modest improvement → stable observations</b>. Focused history and examination followed, including the respectful herbal story. The STAT bench ran its real timeline — FBC + retics and chemistry released 11:34. Hb 8.1 g/dL with retics 9.8%: marrow compensating. The urgent-result call fired by itself and was acknowledged — the communication loop, closed.</p>'+
+ quizSummary()+
+ '<details open><summary><b>Locked timeline — real timestamps</b></summary><input id="tlQ" placeholder="Filter the timeline — e.g. glucose, centrifuge, release…" style="width:100%;margin:8px 0"><table id="tlTab"><tr><th>Time</th><th>Event</th></tr>'+tl.map(function(r){return '<tr class="tlrow" data-t="'+esc((r[0]+' '+r[1]).toLowerCase())+'"><td>'+r[0]+'</td><td>'+esc(r[1])+'</td></tr>';}).join('')+'</table></details>'+
+ '<details><summary><b>Disease notes</b> (separate set)</summary><p>Sickle cell disease (HbSS) — inherited haemoglobinopathy: HbS polymerises on deoxygenation → red-cell sickling, haemolysis and vaso-occlusion. Acute VOC: severe pain (thighs/back here), often triggered by dehydration, infection, cold, stress or hypoxia. Complications to screen: acute chest syndrome (new chest symptoms + hypoxia + infiltrate), aplastic crisis (parvovirus B19 — LOW retics), sepsis, stroke, priapism. Diagnosis: clinical picture + FBC vs clinical context + reticulocyte count; genotype by HbS solubility / electrophoresis-HPLC. Management (validate locally): prompt protocol analgesia incl. parenteral opioids for severe pain, hydration without overload, trigger screen, complication screening, transfusion only per protocol, hydroxyurea discussion and prophylaxis/vaccines long-term.</p></details>'+
+ 
+ '<details><summary><b>The goal statement</b></summary><p><i>The goal is not guessing a disease name — it is reasoning through severity, labs and safety in your own scope.</i></p></details>'+
+ '<details><summary><b>Sources + validation flags</b></summary><p class="mut">Case blueprint values are internal case data. Validation flags carried in play: glucose-correction dose/concentration · adult fluid volumes · analgesic/definitive therapy per protocol preparation · transfusion thresholds — all labelled REQUIRES CLINICAL VALIDATION against current Ghana guidance, never invented. Teaching reference ranges are shown as teaching ranges.</p></details>'+
+ ' '+(G.finalDone?'<button class="btn" id="pqBtn">🦠 Post-diagnosis Examination · 15 Q</button>':'')+
+ '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn alt" id="expBtn" style="flex:1;min-width:150px">⬇ Download my record</button><button class="btn alt" id="snapBtn" style="flex:1;min-width:150px">📋 Copy score snapshot</button></div>'+
+ '<details><summary><b>📋 Tutor detail — timing & attempts</b></summary><div id="tutorDet"></div></details>'+
+ (G.pq&&G.pq.done?'<div class="card" style="border:2px solid var(--acc);text-align:center"><div style="letter-spacing:3px;font-size:11px;color:var(--acc);font-weight:800">THE CARPE DIEM · CERTIFICATE</div><h1 style="margin:8px 0">Case 02 — Sickle Cell Pain Crisis · Complete</h1><p>Awarded to <b>'+esc(G.name)+'</b><br>Course: '+esc(me().name)+' · Difficulty: '+esc(dOf().label)+'<br>Final score: <b>'+G.score+' / 110</b> · College quiz '+G.quiz+'/10 · Course quiz '+deptPct()+'% · Post-diagnosis '+pqDone()+'/15<br><span class="mut">Carpe Diem Hospital · The Beauty in the Gnarly · Powered by Kingfahd Pappoe</span></p><button class="btn" id="prBtn">🖨 Print certificate</button></div>':'<p class="mut" style="margin-top:8px">Finish the 🦠 Post-diagnosis Examination to unlock your certificate.</p>')+
+ '<button class="btn" id="bk">← Return to Hospital Floor</button></div>');
+ if(el('pqBtn'))el('pqBtn').onclick=postQuizPage;
+ var tq=el('tlQ');
+ if(tq)tq.onkeyup=function(){var v=tq.value.toLowerCase();document.querySelectorAll('.tlrow').forEach(function(r){r.style.display=(r.dataset.t.indexOf(v)>=0)?'':'none';});};
+ var td=el('tutorDet');
+ if(td){
+   var qt=G.qtime||{col:{},dq:{},pq:{}};
+   var rows='';
+   if(qt.col)for(var k in qt.col){if(k.indexOf(':s')>0)rows+='<tr><td>College MCQ</td><td>Q'+(+k.split(':')[0]+1)+'</td><td>'+qt.col[k]+' s</td></tr>';}
+   for(var did in DEPTQ){var dd=G.dq&&G.dq[did];var tt=qt.dq&&qt.dq[did];if(dd&&tt)for(var qx in dd.ans){rows+='<tr><td>'+did+'</td><td>Q'+(+qx+1)+'</td><td>'+(tt[qx]||'—')+' s · '+(dd.ans[qx]?'✓':'✗')+'</td></tr>';}}
+   if(qt.pq)for(var pz in qt.pq){rows+='<tr><td>Post-diagnosis</td><td>Q'+(+pz+1)+'</td><td>'+qt.pq[pz]+' s · '+(G.pq&&G.pq.ans[pz]?'✓':'✗')+'</td></tr>';}
+   td.innerHTML=rows?'<table><tr><th>Quiz</th><th>Question</th><th>Time · correct</th></tr>'+rows+'</table>':'<p class="mut">No timing data yet.</p>';
+ }
+ function recText(){
+   var L=[];
+   L.push('CARPE DIEM DIAGNOSIS ENGINE — CASE 02 RECORD');
+   L.push('Name: '+G.name+' | Course: '+me().name+' | Difficulty: '+dOf().label);
+   L.push('Score: '+G.score+'/110 (core '+G.hist+'/20 H · '+G.inv+'/25 I · '+G.diff_+'/20 D · '+G.final+'/25 F · '+G.safe+'/10 S · hints '+(G.hints||0)+')');
+   L.push('College quiz: '+G.quiz+'/10 | Course quiz: '+deptPct()+'% | Post-diagnosis: '+(G.pq?(pqDone()+'/15'):'—'));
+   L.push('');
+   L.push('LOCKED TIMELINE');
+   tl.forEach(function(r){L.push(r[0]+'  '+r[1]);});
+   L.push('');
+   L.push('THE BEAUTY IN THE GNARLY · POWERED BY KINGFAHD PAPPOE');
+   return L.join('\n');
+ }
+ var ex=el('expBtn');
+ if(ex)ex.onclick=function(){
+   var blob=new Blob([recText()],{type:'text/plain'});
+   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='case01-record-'+(G.name||'student').replace(/\s+/g,'-')+'.txt';document.body.appendChild(a);a.click();a.remove();
+ };
+ var sn=el('snapBtn');
+ if(sn)sn.onclick=function(){
+   var txt='🏆 Carpe Diem Case 02 — '+G.name+' ('+me().name+')\nScore '+G.score+'/110 · College quiz '+G.quiz+'/10 · Course quiz '+deptPct()+'% · Post-diagnosis '+(G.pq?(pqDone()+'/15'):'—')+'\nThe Beauty in the Gnarly.';
+   if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){alert('Snapshot copied — paste it anywhere.');}).catch(function(){prompt('Copy your snapshot:',txt);});}
+   else prompt('Copy your snapshot:',txt);
+ };
+ var pr=el('prBtn'); if(pr)pr.onclick=function(){window.print();};
+ voice('Case debrief. Daniel arrived in severe pain, a familiar crisis. Prompt analgesia came first, then honest reassessment. The bench ran its real timeline. Haemoglobin eight point one, retics nine point eight — marrow compensating. The urgent-result call fired by itself and was acknowledged. The diagnosis was earned, never guessed. Well played.');
+ el('bk').onclick=floorPage;
+}
+function courseNote(id){
+ var m={medicine:'ABCDE · pain assessment 9/10 (thighs + lower back, ~14 h, typical crisis) · prompt protocol analgesia with reassessment · trigger screen · clinical-context labs · evidence-first differential · criteria-based FINAL call · complication screening (ACS/aplastic/sepsis).',
+ nursing:'Triage with pain score 9/10 · observation trends (afebrile, HR 108, SpO2 97% RA) · IV access + prescribed analgesia support · hydration balance · reassessment documentation · escalation red flags (chest symptoms, fever, neuro change) · handover.',
+ mls:'STAT FBC + retics · chemistry (renal/electrolytes/bilirubin) · morphology/haemolysis context review · interpret against clinical context (reference range 13–17 g/dL) · QC pass · RELEASE REPORT · urgent-result communication loop demonstrated · NO FINAL button by design — scope, not inferiority.',
+ pharmacy:'Medication reconciliation incl. home analgesics + herbal cross-check · allergy review · opioid/NSAID precautions and monitoring per protocol · renal/hydration + duplicate-therapy checks · discharge counselling plan.',
+ herbal:'Respectful product history — home remedies for this episode documented · specifics recorded as given · what CAN / CANNOT be concluded separated · safety questions flagged to the team · emergency analgesia never delayed.',
+ imaging:'No imaging at baseline — no justified clinical question (SpO2 97% RA, RR 20, chest clear, no focal signs). A chest film ONLY if acute chest syndrome is suspected. Available, never decorative. Re-imaging triggers armed.',
+ physio:'Gentle mobility once pain is controlled · breathing exercises · assisted mobilisation with obs monitoring · graded endurance toward apprenticeship return · DVT-prevention awareness.',
+ rehab:'Function and participation after the crisis · graded return to electrical-installation work · pacing/fatigue education · no long-term impairment assumed · sickle-cell team follow-up.',
+ dental:'No oral/dental axis in this presentation — an honest "not needed here", never unimportant.',
+ midwifery:'Male patient — no pregnancy axis. The discipline remains equal in the hospital architecture.',
+ vet:'Not in the treatment path. One-Health note: sickle cell disease is genetic, not zoonotic — population-health teaching point only.'};
+ return m[id]||'';
+}
+/* ---------- NURSING ---------- */
+function nursingStation(){
+ var N=G.N;
+ var body='<div class="order"><b>NURSING STATION</b><br>Triage, pain assessment, observations, prescribed analgesia/support, hydration and fluid balance, opioid safety monitoring, escalation of red flags, education and structured handover. Reassess and document response to interventions.</div>'+
+ '<div class="chatlog">'+stepView(N,nursingStation,'nursing','Begin with triage and pain/obs assessment.')+'</div>'+
+ '<div class="two">'+
+ '<button class="btn alt" data-cmd="TRI"'+(N.triage?' disabled':'')+'>1 • Triage + pain score & baseline obs</button>'+
+ '<button class="btn alt" data-cmd="TREND"'+((N.triage&&!N.trend)?'':' disabled')+'>2 • Timed observations & pain reassessment</button>'+
+ '<button class="btn alt" data-cmd="GCS"'+((N.triage&&!N.gcs)?'':' disabled')+'>3 • Safety checks (identity, Rx, allergies)</button>'+
+ '<button class="btn alt" data-cmd="RECK"'+((N.gcs&&!N.reck)?'':' disabled')+'>4 • Post-analgesia monitoring (incl. opioid safety)</button>'+
+ '<button class="btn alt" data-cmd="FLU"'+((N.reck&&!N.fluid)?'':' disabled')+'>5 • Hydration assessment & fluid balance</button>'+
+ '<button class="btn alt" data-cmd="ESC"'+((N.fluid&&!N.esc)?'':' disabled')+'>6 • Escalation readiness / red-flag response</button>'+
+ '<button class="btn alt" data-cmd="HAND"'+((N.esc&&!N.hand)?'':' disabled')+'>7 • SBAR handover & discharge education</button>'+
+ '<button class="btn alt" data-cmd="FAM">8 • Patient/family support & confidentiality</button>'+
+ ((N.hand&&!N.dq)?'<div><button class="btn" id="toDqN">📘 Nursing departmental notes + quiz</button></div>':'')+
+ '</div>';
+ stationShell('Nursing — Bedside Care',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){return function(){Ncmd(k);};})(bs[i].dataset.cmd);
+ deptBind();navBind();
+}
+function Ncmd(c){
+ var N=G.N;
+ if(c==='TRI'){N.triage=1;G.clock=TL.triage;save();add('safe',3);
+  Nlog('<span class="time">'+TL.triage+'</span> <b>Triage:</b> Previously well young man, severe bilateral thigh/lower-back pain 9/10 (~14 h). T 37.2°C, HR 108, RR 20, BP 116/72, SpO₂ 97% RA, alert, distressed. No chest pain/cough/dyspnoea, no focal neurologic symptoms reported. Prioritised for prompt assessment and analgesia.');
+  voice('Triage complete. Severe pain, stable observations, oxygen saturation ninety seven percent on room air.','narrator');nursingStation();}
+ else if(c==='TREND'){N.trend=1;save();add('inv',4);
+  Nlog('<span class="time">08:30 → 08:50</span> <b>Observations & pain reassessment:</b> Timed pain scores, function, vital signs and response to interventions documented. No fever, no desaturation, no chest symptoms at baseline reassessment. Continue scheduled reassessment.');
+  voice('Timed observations and pain reassessment documented. No fever or desaturation.','narrator');nursingStation();}
+ else if(c==='GCS'){N.gcs=1;save();add('safe',4);
+  Nlog('<b>Safety checks before administration:</b> Patient identity verified, prescription/order checked, allergies confirmed (NKDA reported), dose/route/timing and relevant history reviewed. Documented per policy.');
+  voice('Medication safety checks completed: identity, prescription, allergies, dose and route verified.','narrator');nursingStation();}
+ else if(c==='RECK'){N.reck=1;save();add('inv',4);
+  Nlog('<span class="time">'+TL.rea+'</span> <b>Post-analgesia monitoring:</b> Pain/functional response recorded; sedation level, respiratory rate/effort and SpO₂ monitored (opioid safety). Adverse effects assessed and documented. Escalate marked sedation or slow/shallow breathing immediately.');
+  voice('Post analgesia monitoring documented, including pain response and opioid safety observations.','narrator');nursingStation();}
+ else if(c==='FLU'){N.fluid=1;save();add('safe',3);
+  Nlog('<b>Hydration & fluid balance:</b> Oral intake, losses, mucous membranes, urine output and clinical volume status assessed; intake/output charted. Support oral fluids as tolerated; avoid automatic/unnecessary fluid loading. Escalate concerns per protocol.');
+  voice('Hydration assessed and fluid balance charted. Oral fluids supported as tolerated.','narrator');nursingStation();}
+ else if(c==='ESC'){N.esc=1;save();add('safe',4);
+  Nlog('<b>Red-flag escalation plan:</b> Immediate escalation for chest pain, cough/dyspnoea, SpO₂ fall, fever, new neurologic deficit, marked sedation/respiratory depression, acute deterioration or uncontrolled pain. ABC assessment and urgent medical review per pathway.');
+  voice('Red flag escalation criteria reviewed. Any deterioration will trigger urgent assessment and escalation.','narrator');nursingStation();}
+ else if(c==='HAND'){N.hand=1;save();add('safe',5);
+  Nlog('<span class="time">'+TL.ack+'</span> <b>SBAR handover & education:</b> Situation — 23M, previously well, first severe bilateral thigh/lower-back pain since last night. Background — ~14 h pain, home analgesics inadequate, Hb 8.1 with reticulocytosis. Assessment — pain response, obs, hydration, no red flags at baseline. Recommendation — continue reassessment, analgesia per protocol, monitor for complications; discharge teaching on meds, hydration, follow-up and red flags when criteria met. The team is investigating his anaemia.');
+  voice('Structured handover and discharge education prepared. Continue monitoring and safety netting.','narrator');nursingStation();}
+ else if(c==='FAM'){N.fam=1;save();add('safe',2);
+  Nlog('<b>Support & confidentiality:</b> Patient and accompanying sister informed of plan in understandable terms; concerns addressed respectfully. Information shared appropriately and documented.');
+  voice('Patient and family supported. Information shared respectfully and appropriately.','narrator');nursingStation();}
+ else nursingStation();
+}
+function Nlog(h){G.N.log=(G.N.log||'')+'<div class="a">'+h+'</div>';var st=G.N;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'Nursing');}
+/* ---------- MLS ---------- */
+function mlsStation(){
+ var L=G.L;
+ var relDone=L.rel?'<div class="a">✅ <b>RELEASE REPORT complete '+TL.release+'</b> — results returned to requesting clinician. Pre-analytical, analytical and post-analytical responsibilities documented.</div>':'';
+ var body=mlsStrip()+'<div class="order"><b>MLS — LABORATORY WORKFLOW</b><br>Receive and verify request/specimens, perform indicated tests (FBC, reticulocyte count, chemistry as ordered), apply QC, interpret in context of baseline/trends, and release validated results. No reflex malaria testing without indication in this clinical context.</div>'+
+ '<div class="chatlog">'+stepView(L,mlsStation,'mls','Verify request and specimen suitability first.')+'</div>'+
+ '<div class="two">'+
+ '<div><button class="btn alt" data-cmd="VERIFY"'+(L.verify?' disabled':'')+'>1 • Verify request & specimen (pre-analytical)</button>'+
+ '<button class="btn alt" data-cmd="ACC"'+((L.verify&&!L.acc)?'':' disabled')+'>2 • Reception / accessioning</button>'+
+ '<button class="btn alt" data-cmd="SPIN"'+((L.acc&&!L.b1)?'':' disabled')+'>3a • Processing / separation</button>'+
+ '<button class="btn alt" data-cmd="FBCB"'+((L.b1&&!L.b2)?'':' disabled')+'>3b • FBC & reticulocyte analysis</button>'+
+ '<button class="btn alt" data-cmd="CHB"'+((L.b2&&!L.b3)?'':' disabled')+'>3c • Chemistry (renal/electrolytes/bilirubin)</button>'+
+ '<button class="btn alt" data-cmd="RDTB"'+((L.b3&&!L.b4)?'':' disabled')+'>3d • Morphology/haemolysis context review</button></div>'+
+ '<div><button class="btn alt" data-cmd="PAR"'+((L.b4&&!L.b5)?'':' disabled')+'>3e • Correlation with baseline/clinical question</button>'+
+ '<button class="btn alt" data-cmd="VRF"'+((L.b5&&!L.b6)?'':' disabled')+'>3f • Technical verification</button>'+
+ '<button class="btn alt" data-cmd="QC"'+((L.bench&&!L.qc)?'':' disabled')+'>4 • QC & validation</button>'+
+ '<button class="btn alt" data-cmd="REL"'+((L.qc&&!L.rel)?'':' disabled')+'>5 • RELEASE REPORT</button></div>'+
+ '</div>'+relDone+((L.rel&&!L.dq)?'<div style="margin-top:8px"><button class="btn" id="toDqL">📘 MLS departmental notes + quiz</button></div>':'');
+ stationShell('MLS — Specimen to Report',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){return function(){Lcmd(k);};})(bs[i].dataset.cmd);
+ deptBind();navBind();
+}
+function Llog(h){G.L.log=(G.L.log||'')+'<div class="a">'+h+'</div>';var st=G.L;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'MLS');}
+function Lcmd(c){
+ var L=G.L;
+ if(c==='VERIFY'){L.verify=1;save();add('inv',4);
+  Llog('✅ <b>Request/specimen verified:</b> Patient ID matches, clinical indication documented (VOC assessment). Specimen type/volume/label/collection time acceptable; no clot/haemolysis issues identified. Rejection criteria reviewed (e.g. underfilled/ID mismatch would require documented rejection and repeat).');
+  voice('Request and specimen verified. Identification and pre analytical checks complete.','narrator');mlsStation();}
+ else if(c==='ACC'){L.acc=1;G.clock=TL.receipt;save();add('inv',3);
+  Llog('<span class="time">'+TL.receipt+'</span> <b>Accessioned:</b> Samples logged and routed for FBC/reticulocytes and chemistry as requested.');
+  voice('Samples accessioned and routed for analysis.','narrator');mlsStation();}
+ else if(c==='SPIN'){L.b1=1;G.clock=TL.spin;save();add('inv',2);
+  Llog('<span class="time">'+TL.spin+'</span> <b>Processing:</b> Samples prepared appropriately for analysers/tests per SOP.');
+  voice('Samples processed for analysis.','narrator');mlsStation();}
+ else if(c==='FBCB'){L.b2=1;G.clock=TL.fbc;save();add('inv',3);
+  Llog('<span class="time">'+TL.fbc+'</span> <b>FBC & reticulocytes:</b> Hb 8.1 g/dL, MCV 88 fL, WBC 12.1, platelets 385, reticulocytes 9.8%. Marked anaemia with a brisk reticulocyte response — suggests haemolysis or chronic loss; interpret retics with the full picture — clinical context of anaemia (absolute/corrected adds context).');
+  voice('Full blood count and reticulocytes analysed. Haemoglobin markedly low with reticulocytosis.','narrator');mlsStation();}
+ else if(c==='CHB'){L.b3=1;G.clock=TL.chem;save();add('inv',3);
+  Llog('<span class="time">'+TL.chem+'</span> <b>Chemistry:</b> Creatinine 82 µmol/L, Na 138, K 4.2, total bilirubin 34 µmol/L. Interpret in clinical context and trends; bilirubin may reflect haemolysis.');
+  voice('Chemistry analysed. Results to be interpreted in clinical context.','narrator');mlsStation();}
+ else if(c==='RDTB'){L.b4=1;G.clock=TL.rdt;save();add('inv',2);
+  Llog('<span class="time">'+TL.rdt+'</span> <b>Context note:</b> Peripheral film may show morphologic changes but does not alone confirm genotype. No routine malaria test performed without independent indication in this clinical context.');
+  voice('Morphology and test-indication context reviewed. No routine malaria testing without indication.','narrator');mlsStation();}
+ else if(c==='PAR'){L.b5=1;G.clock=TL.micro;save();add('inv',2);
+  Llog('<span class="time">'+TL.micro+'</span> <b>Correlation:</b> Findings (Hb 8.1 with reticulocytes 9.8% and afebrile) are consistent with a haemolytic crisis pattern; no evidence of aplastic crisis. The cause is not yet explained — clinical correlation and further analysis (haemoglobin fractionation) will help. Clinical correlation required for complications.');
+  voice('Results correlated with baseline and clinical question.','narrator');mlsStation();}
+ else if(c==='VRF'){L.b6=1;L.bench=1;save();add('inv',2);
+  Llog('<span class="time">'+TL.verify+'</span> <b>Technical verification:</b> Results reviewed, units/ranges checked, no critical flags requiring urgent callback in this clinical context. Ready for QC/validation.');
+  voice('Technical verification complete. Ready for quality control and validation.','narrator');mlsStation();}
+ else if(c==='QC'){L.qc=1;save();add('inv',3);
+  Llog('<span class="time">'+TL.verify+'</span> <b>QC/validation:</b> Internal quality controls acceptable; results validated for release per SOP.');
+  voice('Quality control acceptable. Results validated.','narrator');mlsStation();}
+ else if(c==='REL'){L.rel=1;G.clock=TL.release;save();add('inv',4);rel('fbc');rel('chem');rel('rdt');rel('film');
+  var out='<span class="time">'+TL.release+'</span> <b>RELEASE REPORT → Medicine/Nursing/Pharmacy</b><br>';
+  LABS.forEach(function(lb){if(lb.id==='fbc'||lb.id==='chem'||lb.id==='film'){out+='<b>'+lb.name+'</b><br>'; lb.rows.forEach(function(r){var rv=r[1]; out+='• '+esc(r[0])+': <b>'+esc(rv)+'</b>'+(someRange()?' <span class="mut">['+esc(r[2])+']</span>':'')+'<br>';});}});
+  out+='<br><span class="mut">Interpret with baseline/trend and clinical findings. Communicate significant/critical results per policy.</span>';
+  Llog(out); voice('Report released to the clinical team.','narrator'); mlsStation();}
+ else mlsStation();
+}
+/* ---------- PHARMACY ---------- */
+function pharmStation(){
+ var P=G.P;
+ var body='<div class="order"><b>PHARMACY STATION</b><br>Medication reconciliation, analgesic safety (multimodal plan per protocol), renal/GI/hydration considerations for NSAIDs, opioid monitoring/counselling, interaction checks (including OTC/herbal), and discharge counselling. Doses/routes per current institutional guidance.</div>'+
+ '<div class="chatlog">'+stepView(P,pharmStation,'pharmacy','Start with medication reconciliation and allergy review.')+'</div>'+
+ '<div class="two">'+
+ '<button class="btn alt" data-cmd="PH"'+(P.hist?' disabled':'')+'>1 • Medication reconciliation</button>'+
+ '<button class="btn alt" data-cmd="AL"'+((P.hist&&!P.aller)?'':' disabled')+'>2 • Allergy & interaction screen</button>'+
+ '<button class="btn alt" data-cmd="FAM2"'+((P.aller&&!P.fam)?'':' disabled')+'>3 • Analgesic plan safety review (per protocol)</button>'+
+ '<button class="btn alt" data-cmd="DOSE"'+((P.fam&&!P.dose)?'':' disabled')+'>4 • NSAID/opioid precautions & monitoring</button>'+
+ '<button class="btn alt" data-cmd="FLU"'+((P.dose&&!P.fluid)?'':' disabled')+'>5 • Renal/hydration and duplicate-therapy checks</button>'+
+ '<button class="btn alt" data-cmd="COUNS"'+((P.fluid&&!P.couns)?'':' disabled')+'>6 • Counselling & discharge safety plan</button>'+
+ ((P.couns&&!P.dq)?'<div><button class="btn" id="toDqP">📘 Pharmacy departmental notes + quiz</button></div>':'')+
+ '</div>';
+ stationShell('Pharmacy — Medication Safety',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){return function(){Pcmd(k);};})(bs[i].dataset.cmd);
+ deptBind();navBind();
+}
+function Plog(h){G.P.log=(G.P.log||'')+'<div class="a">'+h+'</div>';var st=G.P;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'Pharmacy');}
+function Pcmd(c){
+ var P=G.P;
+ if(c==='PH'){P.hist=1;save();add('hist',5);
+  Plog('<b>Medication reconciliation:</b> No regular medicines, no known allergies. Home analgesics taken for current episode with inadequate relief (exact products/doses/times to verify). Ask about OTC/herbal products and recent doses — he reports unspecified supplements. No recent transfusion documented.');
+  voice('Medication reconciliation started. Confirm regular medicines, home analgesics, and any over the counter or herbal products.','narrator');pharmStation();}
+ else if(c==='AL'){P.aller=1;save();add('safe',4);
+  Plog('<b>Allergy & interactions:</b> NKDA reported (verify reaction history). Screen for sedatives/alcohol/duplicate ingredients and potential interactions. Communicate discrepancies to the team.');
+  voice('Allergy status reviewed and interaction screening initiated.','narrator');pharmStation();}
+ else if(c==='FAM2'){P.fam=1;save();add('safe',4);
+  Plog('<b>Analgesic plan (protocol-guided):</b> Timely, individualised multimodal analgesia with reassessment. Consider paracetamol within total daily limits (check duplicates). NSAID only if renal function/hydration/GI risk and contraindications acceptable. Opioid if indicated with close monitoring. Avoid delays to analgesia for routine tests.');
+  voice('Analgesic plan reviewed for safety and timeliness per protocol.','narrator');pharmStation();}
+ else if(c==='DOSE'){P.dose=1;save();add('safe',4);
+  Plog('<b>Precautions & monitoring:</b> Monitor sedation and respiratory status with opioids; reassess pain/function and adverse effects. Review NSAID risks (renal, GI, hydration). Avoid combining duplicate paracetamol-containing products. Specific doses/routes/intervals per current institutional guidance.');
+  voice('Opioid and NSAID precautions reviewed. Monitor for sedation, respiratory depression, and adverse effects.','narrator');pharmStation();}
+ else if(c==='FLU'){P.fluid=1;save();add('safe',3);
+  Plog('<b>Renal/hydration & duplicate checks:</b> Creatinine 82 µmol/L in this snapshot — interpret clinically; ensure hydration assessed before nephrotoxic/NSAID choices. Verify total paracetamol exposure from all sources. Document recommendations.');
+  voice('Renal function and hydration considered. Check for duplicate paracetamol and other interacting medicines.','narrator');pharmStation();}
+ else if(c==='COUNS'){P.couns=1;save();add('safe',5);
+  Plog('<b>Counselling & discharge plan:</b> Explain purpose/schedule/max doses, how to take medicines safely, adverse effects and when to seek urgent care (fever, chest pain, breathlessness, neurologic symptoms, uncontrolled pain). Emphasize no sharing of opioids, secure storage, adherence to follow-up and sickle-cell care plan. Provide clear written/verbal instructions per policy.');
+  voice('Counselling plan prepared: safe medicine use, adverse effects, and red flags requiring urgent return.','narrator');pharmStation();}
+ else pharmStation();
+}
+/* ---------- HERBAL ---------- */
+function herbalStation(){
+ var H=G.H;
+ var body='<div class="order"><b>HERBAL MEDICINE STATION</b><br>Take a respectful, non-judgmental history of any traditional/herbal products used (name/source/preparation/dose/timing/route/reason). Assess possible safety concerns and interactions without assuming harm or benefit; communicate to the team. No blame.</div>'+
+ '<div class="chatlog">'+stepView(H,herbalStation,'herbal','Open with a respectful enquiry.')+'</div>'+
+ '<div class="two">'+
+ '<button class="btn alt" data-cmd="PREP">1 • Prepare respectful space</button>'+
+ '<button class="btn alt" data-cmd="ASK"'+(H.asked?' disabled':'')+'>2 • Traditional/herbal product history</button>'+
+ '<button class="btn alt" data-cmd="SAFE">3 • Safety/interaction considerations</button>'+
+ '<button class="btn alt" data-cmd="TEAM"'+((H.asked&&!H.team)?'':' disabled')+'>4 • Communicate to clinical team</button>'+
+ '</div>';
+ stationShell('Herbal Medicine — Respectful History',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){return function(){Hcmd(k);};})(bs[i].dataset.cmd);
+ navBind();
+}
+function Hlog(h){G.H.log=(G.H.log||'')+'<div class="a">'+h+'</div>';var st=G.H;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'Herbal Medicine');}
+function Hcmd(c){
+ var H=G.H;
+ if(c==='PREP'){Hlog('<b>Respectful approach:</b> Non-judgmental, patient-centred discussion to understand home remedies and support safe care.'); voice('A respectful, non judgmental discussion is opened.','narrator'); herbalStation();}
+ else if(c==='ASK'){H.asked=1;save();add('hist',4);
+  Hlog('<b>History:</b> Ask about any herbal/traditional preparations used for this episode or routinely: product/plant name if known, source, preparation, amount, route, timing/frequency, reason, and perceived effects. Document known/unknown clearly.');
+  voice('Herbal and traditional product history taken and documented.','narrator');herbalStation();}
+ else if(c==='SAFE'){H.requestedSafe=1;save();add('safe',3);
+  Hlog('<div class="warn"><b>Safety considerations:</b> Identify possible interactions, sedation, renal/hepatic risks or contamination concerns where plausible, but do not claim toxicity or benefit without evidence. Unknown composition remains unknown.</div>');
+  voice('Safety considerations reviewed. Avoid unsupported claims.','narrator');herbalStation();}
+ else if(c==='TEAM'){H.team=1;save();add('safe',3);
+  Hlog('<b>Team communication:</b> Share documented exposure history with Medicine/Pharmacy/Nursing; ensure no delay to indicated emergency/analgesic care; maintain respectful, blame-free documentation.');
+  voice('Herbal exposure history communicated to the team without delaying care.','narrator');herbalStation();}
+ else herbalStation();
+}
+/* ---------- IMAGING ---------- */
+function imgStation(){
+ var I=G.I;
+ var body='<div class="order"><b>IMAGING STATION</b><br>A chest film is ordered ONLY on a justified clinical question. Ordering scans without a question is a safety trap, not thoroughness.</div>'+
+ '<div class="chatlog">'+stepView(I,imgStation,'imaging','Define the clinical question first.')+'</div>'+
+ '<div class="two">'+
+ '<button class="btn alt" data-cmd="IQ">1 · Define the clinical question</button>'+
+ '<button class="btn alt" data-cmd="ID"'+(I.q?'':' disabled')+'>2 · Decide — justify or stand down</button>'+
+ '</div>';
+ stationShell('Medical Imaging — Justified or Nothing',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){return function(){Icmd(k);};})(bs[i].dataset.cmd);
+ navBind();
+}
+function Ilog(h){G.I.log=(G.I.log||'')+'<div class="a">'+h+'</div>';var st=G.I;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'Imaging');}
+function Icmd(c){
+ var I=G.I;
+ if(c==='IQ'){I.q=1;save();Ilog('<b>Question posed:</b> is there a respiratory complication justifying a chest film TODAY? Data so far: SpO₂ 94 % on air · RR 28 · chest clear to auscultation · no focal respiratory distress.');voice('Question posed: is there a respiratory complication justifying a chest film today? Oxygen ninety-four on air. Respiratory rate twenty-eight. Chest clear. No focal distress.','narrator');imgStation();}
+ else if(c==='ID'){I.dec=1;add('safe',5);Ilog('<b>Decision: STAND DOWN — not indicated now.</b> Justification: no respiratory evidence. Re-image triggers armed: RR ≥ 30 · falling SpO₂ · new focal signs · any respiratory deterioration. Discipline over decoration.<span class="mut"> (Adding a scan “to include the department” would be a safety error — logged as such.)</span>');
+  voice('Decision: stand down. Not indicated now. Re-image triggers armed. Discipline over decoration.','narrator');
+  imgStation();}
+}
+/* ---------- PHYSIO / REHAB ---------- */
+function physStation(){
+ var PH=G.PH;
+ var lock=(!G.M.rea&&!G.M.ord);
+ var body='<div class="order"><b>PHYSIOTHERAPY — AFTER STABILISATION ONLY</b><br>Breathing · safe first mobilisation · endurance plan. Not first-hour resuscitation.</div>'+
+ '<div class="chatlog">'+stepView(PH,physStation,'physio',lock?'The acute pathway is still unfolding — physio holds scope discipline and waits.':'The acute pathway has settled its first threats — plan below.')+'</div>'+
+ '<button class="btn alt" data-cmd="MOB">1 · Post-stabilisation mobility + endurance plan</button>';
+ stationShell('Physiotherapy and Sports Science',body);
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){
+  return function(){
+   if(!G.M.rea){PHMG('<div class="labr">⏸ Not yet — the first hours are not physio territory. Return once the acute pathway has settled.</div>');voice('Not yet. The first hours are not physiotherapy territory. Return once the acute pathway has settled.','narrator');physStation();}
+   else{PHMG('<b>Mobility + endurance plan:</b> breathing exercises from the settled phase onwards · supervised first mobilisation with obs monitoring · graded endurance toward farm-work return · DVT-prevention awareness given the days of recumbency.');voice('Mobility and endurance plan. Breathing exercises first. Supervised mobilisation. Graded endurance toward the return to farm work. Clot prevention awareness.','narrator');add('safe',5);physStation();}
+  };
+})(bs[i].dataset.cmd);
+ navBind();
+}
+function PHMG(h){G.PH.log=(G.PH.log||'')+'<div class="a">'+h+'</div>';var st=G.PH;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'Physiotherapy');}
+function rehabStation(){
+ var body='<div class="order"><b>DISABILITY AND REHABILITATION STUDIES</b><br>Function and participation after stabilisation — nothing assumed from an acute collapse.</div>'+
+ '<div class="chatlog">'+stepView(G.R,rehabStation,'rehab','Assess — do not prematurely label.')+'</div>'+
+ '<button class="btn alt" data-cmd="PLAN">1 · Function + participation plan</button>';
+ stationShell('Disability and Rehabilitation Studies',body);
+ el('homeBtn').onclick=floorPage;
+ var bs=document.querySelectorAll('[data-cmd]');
+ for(var i=0;i<bs.length;i++)bs[i].onclick=(function(k){
+  return function(){
+   G.R.plan=1;add('safe',5);Rpush('<b>Plan:</b> return-to-activity framing · watch-and-wait for any persistent limitation · participation barriers only if they emerge · family-supported return to farm life.');
+   voice('Rehabilitation plan. Return to activity framing. Watch and wait for any persistent limitation. A family supported return to farm life.','narrator');
+   rehabStation();
+  };
+ })();
+ navBind();
+}
+function Rpush(h){G.R.log=(G.R.log||'')+'<div class="a">'+h+'</div>';var st=G.R;st.arr=(st.arr||[]);st.arr.push(h);if(st.arr.length>300)st.arr.shift();if(STEPVIEW.arr===st.arr)STEPVIEW.pos=st.arr.length-1;save();AUL(h,'Rehabilitation');}
+/* ---------- dispatcher ---------- */
+function stationPage(id){
+ var hello={
+  medicine:"Medicine station. Handover at the door: a previously well twenty-three year old man in his first severe bilateral thigh and lower-back pain. Treat the pain early. The label comes last.",
+  nursing:"Nursing station. You own the bedside. Triage, pain scores, observation trends, hydration, escalation and handover. Nursing is not a task list.",
+  mls:"Laboratory station. Verify the stat request first. Pre-analytical checks protect every result downstream.",
+  pharmacy:"Pharmacy station. Reconciliation, allergy review, and verification against current guidance. Caution flags matter here.",
+  herbal:"Herbal medicine station. Walk alongside with respect. Document everything, judge nothing. Hand safety questions back without blame.",
+  imaging:"Imaging station. A chest film is ordered only on a justified clinical question. Ordering without a question is a safety trap.",
+  physio:"Physiotherapy station. Post stabilisation work only. Breathing, safe mobilisation, endurance.",
+  rehab:"Rehabilitation studies station. Function and participation after stabilisation. Nothing assumed from an acute collapse."
+ };
+ if(hello[id])voice(hello[id],'narrator');
+ if(id==='nursing')nursingStation();
+ else if(id==='mls')mlsStation();
+ else if(id==='pharmacy')pharmStation();
+ else if(id==='herbal')herbalStation();
+ else if(id==='imaging')imgStation();
+ else if(id==='physio')physStation();
+ else if(id==='rehab')rehabStation();
+ else medStation();
+}
+/* ---------- leaderboard + server save ---------- */
+function saveToServer(){
+ if(!G.finalDone)return;
+ try{fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({userId:G.userId,name:G.name,phone:G.phone,discipline:G.discipline,caseId:CFG.game,score:G.score})})
+ .then(function(r){return r.json();}).catch(function(){});}catch(e){}
+}
+function leaderboardPage(){
+ screen('<div class="brandbar"><div class="bb">THE CARPE DIEM GAMING EXPERIENCE</div><div class="bs">Carpe Diem Hospital · Leaderboard</div></div>'+
+ '<div class="card"><h1>🏆 Leaderboard</h1><div id="lb"><p class="mut">Loading…</p></div><button class="btn" id="rl">Refresh</button><button class="btn alt" id="bk">← Return to Hospital Floor</button></div>'+
+ '<div class="foot"><b>THE CARPE DIEM</b> · THE BEAUTY IN THE GNARLY<br>POWERED BY KINGFAHD PAPPOE</div>');
+ var load=function(){
+  fetch('/api/leaderboard').then(function(r){return r.json();}).then(function(j){
+   var rows=(j.rows||j.leaderboard||[]).slice(0,10);var t=el('lb');
+   if(t)t.innerHTML=rows.length?'<table><tr><th>#</th><th>Name</th><th>Course</th><th>Case</th><th>Score</th></tr>'+rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.discipline)+'</td><td>'+esc(r.caseId||'')+'</td><td><b>'+r.score+'</b></td></tr>';}).join('')+'</table>':'<p class="mut">No scores yet — finish the case to appear here.</p>';
+  }).catch(function(){var t=el('lb');if(t)t.innerHTML='<p class="mut">Offline build: scores save on this device. Connect to the StudyVerse server for the shared leaderboard.</p>';});
+ };
+ load();if(G.finalDone)saveToServer();
+ el('rl').onclick=load;el('bk').onclick=floorPage;
+}
+/* ---------- boot (with temporary autotest) ---------- */
+if((window.location.hash||'').indexOf('#autotest')===0){
+ (function(){
+  function T(name,fn){try{fn();console.error('AT-OK '+name);}catch(e){console.error('AT-FAIL '+name+' :: '+((e&&e.message)||e));}}
+  T('seed',function(){localStorage.setItem('cd-diag:'+CFG.game,JSON.stringify(fresh()));
+   G=fresh();G.name='T';G.userId='t';G.phone='1';G.discipline='medicine';G.diff='easy';G.started=1;save();});
+  T('floor',function(){floorPage();if(app.innerHTML.length<500)throw new Error('empty floor');});
+  T('medstation',function(){stationPage('medicine');});
+  T('no-undefined',function(){var v=app.innerHTML;var x=v.indexOf('>undefined<');if(x>=0)throw new Error('literal undefined: ...'+v.slice(Math.max(0,x-80),x+40));});
+  T('abc',function(){var b=document.querySelector('[data-cmd="ABC"]');if(!b)throw new Error('no ABC btn');b.click();});
+  T('viewer-nav',function(){if(!document.querySelector('[data-nv="-1"]'))throw new Error('viewer nav missing');});
+  T('prev-btn',function(){document.querySelector('[data-nv="-1"]').click();});
+  T('glu',function(){var b=document.querySelector('[data-cmd="GLU"]');if(!b||b.disabled)throw new Error('GLU not enabled');b.click();});
+  T('fix',function(){var b=document.querySelector('[data-cmd="FIX"]');b.click();});
+  T('rea',function(){var b=document.querySelector('[data-cmd="REA"]');b.click();});
+  T('hx',function(){var b=document.querySelector('[data-cmd="HX"]');b.click();});
+  T('ex',function(){var b=document.querySelector('[data-cmd="EX"]');b.click();});
+  T('ord',function(){var b=document.querySelector('[data-cmd="ORD"]');b.click();});
+  T('hno',function(){var b=document.querySelector('[data-cmd="HNO"]');if(!b)throw new Error('no HNO btn');b.click();});
+  T('read',function(){var b=document.querySelector('[data-cmd="READ"]');b.click();});
+  T('nursing',function(){stationPage('nursing');var b=document.querySelector('[data-cmd="TRI"]');if(!b)throw new Error('no TRI');b.click();});
+  T('trend',function(){var b=document.querySelector('[data-cmd="TREND"]');if(!b||b.disabled)throw new Error('TREND not enabled');b.click();});
+  T('mls-verify',function(){stationPage('mls');var b=document.querySelector('[data-cmd="VERIFY"]');b.click();});
+  T('mls-acc',function(){var b=document.querySelector('[data-cmd="ACC"]');b.click();});
+  T('mls-spin',function(){var b=document.querySelector('[data-cmd="SPIN"]');if(!b||b.disabled)throw new Error('SPIN not enabled');b.click();});
+  T('mls-chain',function(){stationPage('mls');
+   ['FBCB','CHB','investigationB','PAR','VRF','QC'].forEach(function(c){var b=document.querySelector('[data-cmd="'+c+'"]');if(!b)throw new Error('no '+c+' btn');if(b.disabled)throw new Error(c+' DISABLED when it should be clickable');b.click();});
+   var r=document.querySelector('[data-cmd="REL"]');if(!r||r.disabled)throw new Error('REL not enabled after QC');
+   r.click();if(!G.GATE)throw new Error('GATE did not open after release');});
+  T('glossary',function(){stationShell('t','<div>x</div>');var gi=el('glossQ');if(!gi)throw new Error('gloss input missing');gi.value='fluor';gi.onkeyup();});
+  T('score-sane',function(){if(!(G.score>=0&&G.score<=110))throw new Error('score insane: '+G.score);});
+  console.error('AT-DONE score='+G.score+' hist='+G.hist+' inv='+G.inv+' safe='+G.safe+' diff_='+G.diff_+' final='+G.final);
+ })();
+}
+else
+(function boot(){
+ var h=window.location.hash||'';
+ var mp=h.match(/^#play-(.+)$/);
+ if(mp){G.discipline=mp[1];save();stationPage(mp[1]);return;}
+ var mw=h.match(/^#watch-(.+)$/);
+ if(mw){watchPage(mw[1]);return;}
+ if(G.started&&G.name){floorPage();}
+ else if(G.name){pickCourse();}
+ else{narratorPage(function(){login();});}
+
+
+})();
+/* ===== COACH-MARK TUTORIAL (guided tour with arrows) ===== */
+/* ===== CARPE DIEM COACH-MARK TUTORIAL ENGINE (shared, self-contained) =====
+ * CDCoach.start(key, def)      — always start
+ * CDCoach.maybe(key, def)      — start only if not seen before (localStorage)
+ * def = { steps:[{sel,t,h}, ...] } — sel = CSS selector to spotlight (optional)
+ * Injects its own <style>; overlay lives on document.body so screen re-renders
+ * don't break it. Esc = skip. Arrows point at the live element.
+ */
+(function () {
+  if (window.CDCoach) return;
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  var st = document.createElement("style");
+  st.textContent =
+    "#cdCoachHole{position:fixed;z-index:99998;pointer-events:none;border-radius:12px;box-shadow:0 0 0 200vmax rgba(2,4,10,.82),inset 0 0 0 2.5px #d4af37;transition:all .28s ease;display:none}" +
+    "#cdCoachHole.dim{left:0!important;top:0!important;width:100vw!important;height:100vh!important;border-radius:0;box-shadow:none!important;background:rgba(2,4,10,.82)}" +
+    "#cdCoachCard{position:fixed;z-index:99999;display:none;left:50%;top:12px;transform:translateX(-50%);width:min(430px,calc(100vw - 24px));max-width:none;max-height:60vh;overflow:auto;background:rgba(18,22,29,.97);color:#ece7db;border:1px solid #d4af37;border-radius:12px;padding:13px 15px 11px;box-shadow:0 16px 60px rgba(0,0,0,.85);line-height:1.45;font-size:13px}" +
+    "#cdCoachCard h4{margin:0 0 4px;color:#d4af37;font-size:15px;letter-spacing:.5px}" +
+    "#cdCoachCard p{margin:0 0 9px;color:#cfc9bc;white-space:pre-line}" +
+    "#cdCoachCard .cdots{color:#d4af37;font-size:9px;letter-spacing:3px;margin-bottom:7px}" +
+    "#cdCoachCard .cbtns{display:flex;gap:6px;justify-content:flex-end;align-items:center}" +
+    "#cdCoachCard .ct{margin-right:auto;color:#8b8577;font-size:11px}" +
+    "#cdCoachCard button{cursor:pointer;border-radius:8px;border:1px solid #d4af37;background:transparent;color:#d4af37;font-weight:700;padding:6px 12px;font-size:12px}" +
+    "#cdCoachCard button.main{background:#d4af37;color:#12161d}" +
+    "#cdCoachCard .cArr{position:absolute;width:0;height:0;border:10px solid transparent;pointer-events:none}";
+  document.head.appendChild(st);
+  var hole = document.createElement("div"); hole.id = "cdCoachHole"; document.body.appendChild(hole);
+  var card = document.createElement("div"); card.id = "cdCoachCard"; document.body.appendChild(card);
+  var steps = [], i = 0, key = null, onEnd = null;
+  function measure(s) {
+    var el = s && s.sel ? document.querySelector(s.sel) : null;
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return null;
+    if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return null;
+    return r;
+  }
+  function draw() {
+    var s = steps[i];
+    if (!s) return end();
+    if (s.if && !s.if()) { i++; draw(); return; }
+    if (s.onEnter) { try { s.onEnter(); } catch (e) {} }
+    var r = measure(s);
+    card.style.display = "block";
+    var last = i === steps.length - 1;
+    var dots = steps.map(function (_, k) { return '<span style="opacity:' + (k === i ? 1 : .28) + '">●</span>'; }).join(" ");
+    card.innerHTML =
+      '<div class="cdots">' + dots + '</div>' +
+      '<h4>' + esc(s.t) + '</h4>' +
+      '<p>' + s.h + '</p>' +
+      '<div class="cbtns"><span class="ct">' + (i + 1) + ' / ' + steps.length + '</span>' +
+      (i > 0 ? '<button id="cdPrev">Back</button>' : '<button id="cdSkip">Skip tour</button>') +
+      '<button class="main" id="cdNext">' + (last ? "Done" : "Next") + '</button></div>';
+    var old = card.querySelector(".cArr"); if (old) old.remove();
+    var cw = Math.min(430, innerWidth - 24);
+    card.style.width = cw + "px";
+    if (!r) {
+      hole.classList.add("dim"); hole.style.display = "block";
+      card.style.top = "12px"; card.style.transform = "translateX(-50%)";
+      return;
+    }
+    var cw2 = Math.min(430, innerWidth - 24);
+    card.style.width = cw2 + "px";
+    hole.classList.remove("dim"); hole.style.display = "block";
+    hole.style.left = (r.left - 6) + "px"; hole.style.top = (r.top - 6) + "px";
+    hole.style.width = (r.width + 12) + "px"; hole.style.height = (r.height + 12) + "px";
+    var ch = card.offsetHeight;
+    var preferAbove = r.top + r.height / 2 > innerHeight / 2;
+    var top;
+    if (preferAbove && r.top - ch - 20 >= 8) { top = r.top - ch - 12; }
+    else if (r.bottom + 12 + ch <= innerHeight - 8) { top = r.bottom + 12; }
+    else if (preferAbove) { top = Math.max(8, innerHeight - ch - 8); }
+    else { top = Math.min(r.bottom + 12, innerHeight - ch - 8); }
+    top = Math.min(Math.max(top, 8), Math.max(8, innerHeight - ch - 8));
+    card.style.top = top + "px";
+    card.style.transform = "translateX(-50%)";
+    var arr = document.createElement("div"); arr.className = "cArr"; card.appendChild(arr);
+    var cardLeft = (innerWidth - cw2) / 2;
+    var ax = Math.min(Math.max(r.left + r.width / 2 - cardLeft - 10, 8), cw2 - 28) + "px";
+    if (top >= r.bottom) { arr.style.bottom = "100%"; arr.style.borderBottomColor = "#d4af37"; }
+    else { arr.style.top = "100%"; arr.style.borderTopColor = "#d4af37"; }
+    arr.style.left = ax;
+  }
+  function end() {
+    try { localStorage.setItem("cdcoach:" + (key || "x"), "1"); } catch (e) {}
+    hole.style.display = "none"; card.style.display = "none"; try { window.CDCoachActive = false; } catch (e) {}
+    var f = onEnd; onEnd = null; if (f) f();
+  }
+  card.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("button") : null;
+    if (!b) return;
+    if (b.id === "cdNext") { i++; if (i >= steps.length) end(); else draw(); }
+    else if (b.id === "cdPrev") { if (i > 0) { i--; draw(); } }
+    else if (b.id === "cdSkip") { end(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && card.style.display === "block") end();
+  });
+  addEventListener("resize", function () { if (card.style.display === "block") draw(); });
+  addEventListener("scroll", function () { if (card.style.display === "block") draw(); }, true);
+  window.CDCoach = {
+    start: function (k, def, cb) { key = k; steps = def.steps; i = 0; onEnd = cb || null; try { window.CDCoachActive = true; } catch (e) {} draw(); },
+    maybe: function (k, def, cb) {
+      var seen = null; try { seen = localStorage.getItem("cdcoach:" + k); } catch (e) {}
+      if (!seen) this.start(k, def, cb);
+    },
+    stop: end
+  };
+})();
+
+var DIAG_COACH = { steps: [
+  { t: "Welcome to Carpe Diem Hospital", h: "Case 02 · quick guided tour — I open the real screens and point at the actual buttons. Next to step in." },
+  { sel: "#introBtn", t: "Step in", h: "Enter Carpe Diem Hospital — or hear the narrator first. The tour walks straight through onboarding into the ward." },
+  { sel: "#nm", t: "Your name", h: "This is you on the shared case record and the class leaderboard. Type your name here — or leave it as is and tap Next.", onEnter: () => login() },
+  { sel: ".diffGrid", t: "Your course & difficulty", h: "One patient, eleven professions, all equal. Your station and your Tutor are built around what you pick here — Easy to Devil.", onEnter: () => { if (!G.name) G.name = (document.getElementById('nm') && document.getElementById('nm').value.trim()) || 'Student'; save(); pickCourse(); } },
+  { sel: "#themeSel", t: "Background mode", h: "Switch the ward look — dark for night study, light for projecting in class.", onEnter: () => { if (!G.started) { G.started = 1; save(); } floorPage(); } },
+  { sel: "#vBtn", t: "🔊 Narration", h: "Toggles the tutor's voice. Your tutor explains every station when you enter it." },
+  { sel: ".dept.me", t: "YOUR station", h: "This card is your course's station. 'Play here' opens the patient folder and the full case workflow for your discipline." },
+  { sel: ".dept:not(.me)", t: "Other stations", h: "'👁 Watch' shows the same detail for other courses — see how MLS, Nursing, Pharmacy and the rest run their part of the case." },
+  { sel: "#finalBtn", t: "🏁 FINAL DIAGNOSIS gate", h: "The gate opens only when: emergency corrected + reassessed · all four bench tests released · differential committed. No guessing your way through." },
+  { sel: "#lbBtn", t: "🏆 Leaderboard", h: "Scores save under your display name — on this device and on the shared class board." },
+  { sel: "#dotsMenu summary", t: "⋮ The menu", h: "Share the case, jump to the main page, restart, or delete progress — all live here." },
+  { t: "The ward is yours", h: "One patient, eight stations, nothing handed over. Type your name, pick your course — then seize it. Carpe Diem." }
+] };
+
+})();
+
+</script></body></html>

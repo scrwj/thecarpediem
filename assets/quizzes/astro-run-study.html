@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Astro Run — Carpe Diem Edition</title>
+<style>
+  body {
+    margin: 0;
+    background: #05060f;
+    overflow: hidden;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+  canvas { display: block; touch-action: none; -webkit-touch-callout: none; } /* we own every touch (drag steering) */
+
+  /* iOS niceties: no double-tap zoom on buttons, no tap flash, no long-press selector */
+  button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* --- HUD --- */
+  #hud {
+    position: fixed;
+    top: calc(14px + env(safe-area-inset-top, 0px)); /* clears the iPhone notch */
+    left: 0; right: 0;
+    text-align: center;
+    color: #7df9ff;
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.8);
+    pointer-events: none;
+    white-space: pre;
+  }
+
+  /* --- Start / Game-over screen --- */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 4, 12, 0.72);
+    color: #cfd8ff;
+    text-align: center;
+    cursor: pointer;
+    z-index: 5;
+  }
+  #overlay h1 {
+    color: #7df9ff;
+    font-size: 40px;
+    letter-spacing: 6px;
+    margin: 0 0 10px;
+  }
+  #overlay p  { color: #6b7395; margin: 4px 0; }
+  #overlay .big { font-size: 20px; color: #fff; margin-top: 18px; }
+
+  /* --- Phone / small screens: shrink HUD + quiz card text --- */
+@media (max-width: 640px), (max-height: 480px) {
+  #hud { font-size: 14px; }
+  #overlay h1 { font-size: 26px; letter-spacing: 4px; }
+  #quizCard { padding: 18px 16px; }
+  #quizQ { font-size: 17px; }
+  .opt { font-size: 14.5px; padding: 11px 12px; }
+  #quizFeedback { font-size: 13.5px; }
+}
+
+/* --- Quiz (checkpoint) overlay --- */
+  #quiz {
+    position: fixed;
+    inset: 0;
+    display: none;                 /* shown while paused for a question */
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 4, 12, 0.82);
+    z-index: 10;
+  }
+  #quizCard {
+    width: min(92vw, 720px);
+    max-height: 88vh;
+    overflow-y: auto;
+    background: #0a0d1e;
+    border: 1px solid #1e2a55;
+    border-radius: 14px;
+    box-shadow: 0 0 40px rgba(0, 229, 255, 0.25);
+    padding: 26px 28px;
+    color: #cfd8ff;
+  }
+  #quizMeta {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    color: #7df9ff;
+  }
+  #quizQ {
+    font-size: 20px;
+    line-height: 1.45;
+    margin-bottom: 18px;
+    color: #eef2ff;
+  }
+  .opt {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    margin: 8px 0;
+    padding: 12px 14px;
+    font-size: 16px;
+    border-radius: 9px;
+    border: 1px solid #26325e;
+    background: #10152e;
+    color: #cfd8ff;
+    cursor: pointer;
+  }
+  .opt:hover:not(:disabled) { border-color: #7df9ff; color: #fff; }
+  .opt .key { color: #7df9ff; font-weight: 700; margin-right: 8px; }
+  .opt.correct { border-color: #2ecc71; background: rgba(46, 204, 113, 0.15); color: #d9ffe8; }
+  .opt.wrong   { border-color: #ff4d6d; background: rgba(255, 77, 109, 0.15); color: #ffd9e1; }
+  .opt:disabled { cursor: default; }
+  #quizFeedback { margin-top: 14px; font-size: 15px; line-height: 1.5; min-height: 20px; }
+  #quizFeedback.good { color: #7dffb0; }
+  #quizFeedback.bad  { color: #ff9db1; }
+  #quizNext {
+    margin-top: 16px;
+    padding: 10px 22px;
+    font-size: 16px;
+    border-radius: 9px;
+    border: 1px solid #7df9ff;
+    background: transparent;
+    color: #7df9ff;
+    cursor: pointer;
+    visibility: hidden;
+  }
+  #quizNext:hover { background: rgba(0, 229, 255, 0.12); }
+</style>
+</head>
+<body>
+
+<div id="hud">Score: 0</div>
+<div id="overlay">
+  <h1>ASTRO RUN — CARPE DIEM</h1>
+  <p>Fly through the asteroid belt. Every glowing GATE is a checkpoint question.</p>
+  <p id="howto">Arrows / WASD to steer &nbsp;•&nbsp; collect crystals 💎 (+50) &nbsp;•&nbsp; avoid rocks</p>
+  <p>Gates start EASY and ramp to HARD — wrong answers come back for a second try!</p>
+  <p class="big" id="launchHint">Click or press ENTER to launch</p>
+</div>
+<!-- ============================================================
+     Checkpoint quiz overlay: freezes the flight, asks a question.
+     ============================================================ -->
+<div id="quiz">
+  <div id="quizCard">
+    <div id="quizMeta"></div>
+    <div id="quizQ"></div>
+    <div id="quizOpts"></div>
+    <div id="quizFeedback"></div>
+    <button id="quizNext">Continue (ENTER)</button>
+  </div>
+</div>
+
+<!-- Three.js loaded from a CDN -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+/* ============================================================
+   ASTRO RUN — CARPE DIEM EDITION
+   A 3D dodger merged with checkpoint study questions.
+   The ship stays still while the world flies toward it;
+   glowing gates pause the run for an objective question
+   whose difficulty ramps with survival distance.
+   ============================================================ */
+
+import * as THREE from "three";
+
+// ------------------------------------------------------------
+// 0. THE QUESTION BANK (injected at build time from banks.js)
+// ------------------------------------------------------------
+const BANK = [{"difficulty":"easy","topic":"Early theories of heredity","question":"Which scientist does the lecture credit with proposing pangenesis?","options":["Jean-Baptiste Lamarck","Charles Darwin","August Weismann","Gregor Mendel"],"correct_index":1,"explanations":["Lamarck is linked to acquired characteristics, which is a different idea from gemmules.","Correct. The lecture credits Darwin with pangenesis, in which gemmules from every body part reach the gonads.","Weismann challenged pangenesis with his germplasm theory; he did not propose it.","Mendel studied discrete inherited factors in peas and did not propose pangenesis."]},{"difficulty":"easy","topic":"Early theories of heredity","question":"The \"homunculus\" belongs to which early theory of heredity?","options":["Epigenesis","Preformation","Pangenesis","Germplasm theory"],"correct_index":1,"explanations":["Epigenesis taught the opposite: the body forms gradually and is not present in miniature.","Correct. Preformationists imagined a miniature man, the homunculus, already formed inside the sperm.","Pangenesis concerned gemmules travelling to the gonads, not a miniature person.","Germplasm theory was Weismann's challenge to pangenesis and has no homunculus."]},{"difficulty":"medium","topic":"Early theories of heredity","question":"A weightlifter's children inherit the large muscles he built through training. Which theory would predict this?","options":["Epigenesis, because tissues form gradually in the embryo","Preformation, because the body is already formed in the gamete","Lamarckism, because acquired characteristics can be passed on","Germplasm theory, because body changes reach the gametes"],"correct_index":2,"explanations":["Epigenesis describes how an embryo develops and does not predict inheritance of acquired traits.","Preformation says a miniature body already exists; training would not change it.","Correct. Lamarckism holds that traits acquired in a lifetime, such as muscle development, are transmitted to offspring.","Germplasm theory challenged the idea that body changes reach the gametes, so it would not predict this."]},{"difficulty":"medium","topic":"Early theories of heredity","question":"According to pangenesis, how did information about body parts reach the next generation?","options":["A miniature copy of each organ was stored in the gamete from the start","Gemmules formed in each body part travelled in the blood to the sperm and eggs","Acquired habits changed the semen directly during mating","The zygote copied the parents' appearance by gradual differentiation"],"correct_index":1,"explanations":["That describes preformation, a miniature copy stored in the gamete, not pangenesis.","Correct. Pangenes or gemmules from each part were carried by blood vessels to the gonads and then inherited.","Direct changes to semen from habits is a Lamarckian-style explanation, not the gemmule mechanism.","Gradual differentiation of a zygote describes epigenesis, not pangenesis."]},{"difficulty":"medium","topic":"Early theories of heredity","question":"What best distinguishes epigenesis from preformation?","options":["In epigenesis the gamete holds a miniature body, while in preformation the body forms by gradual change","Epigenesis claims acquired traits are inherited, while preformation denies that traits can be passed on","Epigenesis requires gemmules in the blood, while preformation requires no transport of material","In epigenesis tissues form gradually by differentiation; in preformation the body just grows"],"correct_index":3,"explanations":["This reverses the two theories: preformation, not epigenesis, has the miniature body.","Inheritance of acquired traits belongs to Lamarckism, not epigenesis.","Gemmules in the blood belong to pangenesis, not epigenesis.","Correct. Epigenesis sees development as differentiation as well as growth, whereas preformation treats it as growth of a ready-made miniature."]},{"difficulty":"medium","topic":"Early theories of heredity","question":"Which pairing of scientist and idea is correct?","options":["Jan Swammerdam: epigenesis, the gradual formation of the body","August Weismann: the germplasm theory, a challenge to pangenesis","Kasper Wolff: pangenesis, the gemmules carried in the blood","Jean-Baptiste Lamarck: preformation, the miniature body in the gamete"],"correct_index":1,"explanations":["Swammerdam (with Bonnet) proposed preformation, not epigenesis.","Correct. Weismann proposed germplasm theory as the first serious challenge to pangenesis.","Wolff, with von Baer, proposed epigenesis, not pangenesis.","Lamarck is linked to acquired characteristics, not preformation."]},{"difficulty":"medium","topic":"Early theories of heredity","question":"Spermatists and ovists were both preformationists. What did they disagree about?","options":["Whether development involves any growth at all","Whether acquired traits are passed on to offspring","Whether the miniature individual was in the sperm or in the egg","Whether gemmules travel in the blood to the gonads"],"correct_index":2,"explanations":["Both agreed development was growth of the miniature, so this was not the disagreement.","Acquired traits belong to Lamarckism and were not the point of dispute here.","Correct. Spermatists placed the preformed individual in the sperm and ovists placed it in the egg.","Gemmules in the blood belong to pangenesis, not to the preformation debate."]},{"difficulty":"hard","topic":"Early theories of heredity","question":"Assertion: Observations of chick embryos supported epigenesis over preformation. Reason: The chick shows a gradual change from the egg to the foetus and finally to the adult body, not the enlargement of a ready-made miniature.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. The gradual changes seen in the chick are exactly what epigenesis predicts, so the reason explains the assertion.","Not this: the reason is not merely true; it is the very evidence that supports epigenesis.","Not this: the reason is true, since the chick does develop gradually.","Not this: the assertion is true because epigenesis was supported by such observations."]},{"difficulty":"hard","topic":"Early theories of heredity","question":"Which of the following statements about early theories of heredity are correct? 1. Pangenesis proposed that gemmules from each body part reach the gametes. 2. Preformation held that a miniature individual already exists in the gamete. 3. Epigenesis held that the gametes contain a small version of the body.","options":["1, 2 and 3","2 and 3 only","1 and 2 only","1 and 3 only"],"correct_index":2,"explanations":["Not this: statement 3 is wrong, because epigenesis says the gametes contain nothing resembling the body.","Not this: statement 1 is also correct, so 2 and 3 only is wrong.","Correct. Statements 1 and 2 describe pangenesis and preformation accurately; statement 3 is false.","Not this: statement 2 is correct and statement 3 is false, so this combination is wrong."]},{"difficulty":"hard","topic":"Early theories of heredity","question":"Match each statement to the theory it illustrates. (i) An acquired scar is passed on to offspring. (ii) A tiny man is already present in the sperm. (iii) Gemmules from every organ gather in the gonads.","options":["(i) Pangenesis; (ii) preformation; (iii) Lamarckism","(i) Lamarckism; (ii) epigenesis; (iii) pangenesis","(i) Preformation; (ii) Lamarckism; (iii) epigenesis","(i) Lamarckism; (ii) preformation; (iii) pangenesis"],"correct_index":3,"explanations":["Not this: it swaps (i) and (iii); scars suggest Lamarckism and gemmules suggest pangenesis.","Not this: (ii) is preformation because epigenesis denies a miniature body.","Not this: every pairing in it is wrong, including (ii) which is not Lamarckism.","Correct. Inheritance of acquired scars is Lamarckism, a miniature man is preformation, and gemmules in the gonads are pangenesis."]},{"difficulty":"devil","topic":"Early theories of heredity","question":"A student argues: \"Epigenesis beat preformation, so the zygote carries no hereditary information at all.\" Which response is most accurate?","options":["Right: epigenesis says gametes contain no information, so development depends on the environment alone","Wrong: the zygote does contain a miniature organism, because preformation was shown to be correct","Right: only the parents' acquired characteristics direct development, as Lamarckism taught","Wrong: the body is not preformed, but the zygote carries DNA information that, with the environment, directs development"],"correct_index":3,"explanations":["Not this: the lecture says information in DNA is transmitted, so development is not environmental alone.","Not this: preformation, the miniature-organism idea, was rejected in favour of epigenesis.","Not this: the lecture's conclusion points to DNA instructions, not acquired characteristics.","Correct. The lecture concludes that parents pass on instructions (information in DNA) that interact with the environment, even though the organism itself is not preformed."]},{"difficulty":"easy","topic":"Mendel and basic terms","question":"What is the scientific name of the plant Mendel used?","options":["Zea mays","Oryza sativa","Pisum sativum","Arabidopsis thaliana"],"correct_index":2,"explanations":["Zea mays is maize, which Mendel did not use for these experiments.","Oryza sativa is rice, not Mendel's experimental plant.","Correct. Mendel worked with the common garden pea, Pisum sativum.","Arabidopsis thaliana is a model plant used much later, not by Mendel."]},{"difficulty":"easy","topic":"Mendel and basic terms","question":"How does the lecture describe Mendel?","options":["A Dutch microscopist who studied sperm cells in Delft","An Austrian monk at St Thomas monastery in Brünn","An English naturalist who travelled on a long research voyage","A French army officer who bred farm animals for a living"],"correct_index":1,"explanations":["The Dutch microscopist idea fits early preformationists, not Mendel.","Correct. The lecture describes Mendel as an Austrian monk in Brünn who studied botany and mathematics.","The English naturalist on a voyage describes Darwin, not Mendel.","Mendel was a monk, not an army officer."]},{"difficulty":"easy","topic":"Mendel and basic terms","question":"A pea plant has the genotype Dd. What is it called?","options":["Homozygous dominant","Heterozygous","Homozygous recessive","Hemizygous"],"correct_index":1,"explanations":["Homozygous dominant would be DD, with two identical dominant alleles.","Correct. Two different alleles (D and d) make the plant heterozygous.","Homozygous recessive would be dd, with two identical recessive alleles.","Hemizygous refers to a single copy of a gene and does not describe Dd."]},{"difficulty":"easy","topic":"Mendel and basic terms","question":"The position of a gene on a chromosome is called its:","options":["Allele","Genotype","Locus","Phenotype"],"correct_index":2,"explanations":["An allele is a variant form of a gene, not a position.","A genotype is the set of alleles an individual carries.","Correct. The lecture defines the locus as the location of a gene on a chromosome.","A phenotype is the visible or measurable expression of a trait."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"Which statement best describes an allele?","options":["The section of chromosome where a gene is located on the chromosome","The visible expression of an inherited trait in an organism","A change in the number of chromosomes present in a cell","An alternative form of a gene, carried one per homologous chromosome"],"correct_index":3,"explanations":["That describes the locus, not the allele.","That describes the phenotype, the visible expression of a trait, not an allele.","A change in chromosome number is a chromosomal variation, not an allele.","Correct. Alleles are different versions of the same gene, one on each homologous chromosome."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"Why were pea flowers convenient for Mendel's work with self-fertilization?","options":["They have male and female parts on separate plants entirely","They cannot be fertilized by pollen from any other plant","They are perfect flowers, so they can self-fertilize","They produce seeds without any fertilization taking place"],"correct_index":2,"explanations":["Separate male and female plants would make self-fertilization impossible.","Mendel could cross-fertilize peas artificially, so this is wrong.","Correct. Having both parts in one flower lets the ovule be fertilized by pollen from the same flower.","Peas still need fertilization to form seeds; they do not make seeds without it."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"Which trait would be least suitable for Mendel's method of studying simple on-or-off traits?","options":["Seed weight, which is controlled by many genes","Flower colour, which is purple or white","Seed texture, which is round or wrinkled","Plant height, which is tall or dwarf"],"correct_index":0,"explanations":["Correct. Seed weight is a quantitative trait controlled by multiple genes and varies continuously.","Flower colour in peas is a simple, discontinuous trait suited to Mendel's method.","Seed texture in peas falls into two clear classes.","Tall versus dwarf was one of Mendel's simple, discontinuous traits."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"Besides studying one character at a time, what made Mendel's approach distinctive?","options":["He used microscopes to look for gemmules in the pollen","He counted progeny of each kind to test the proportions","He judged the overall resemblance of whole plants to parents","He relied on natural pollination without controlled crosses"],"correct_index":1,"explanations":["Looking for gemmules belongs to pangenesis, not to Mendel's counting approach.","Correct. His quantitative approach, counting offspring of each kind, revealed constant proportions.","Mendel examined single characters, not overall resemblance.","Mendel used controlled crosses, so natural pollination alone is wrong."]},{"difficulty":"hard","topic":"Mendel and basic terms","question":"Mendel removed the anthers from the \"test\" flowers before crossing. What would happen if he had not?","options":["The flowers would produce no seeds at all after the cross","All offspring would automatically be tall, whatever the pollen","The pollen from the other parent could not fertilize the ovules","Some seeds would come from self-pollination, mixing the cross"],"correct_index":3,"explanations":["The ovules would still be fertilized, so seeds would form.","Self-pollination would not make every offspring tall; it would just contaminate the cross.","Foreign pollen can still fertilize the ovules; the problem would be mixing in self-pollen.","Correct. Removing anthers prevents self-fertilization so that only the chosen pollen fertilizes the ovules."]},{"difficulty":"hard","topic":"Mendel and basic terms","question":"Assertion: A recessive allele can be present in a plant that looks like the dominant type. Reason: In the heterozygote the dominant allele determines the visible trait.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. In Dd the dominant allele determines the phenotype, hiding the recessive allele, so the reason explains the assertion.","Not this: the reason is not just true; it directly explains how the recessive allele stays hidden.","Not this: the reason is true, since dominance applies in the heterozygous condition.","Not this: the assertion is true, since carriers (Dd) show the dominant phenotype."]},{"difficulty":"hard","topic":"Mendel and basic terms","question":"Which statements about genotype and phenotype are correct? 1. A phenotype is any measurable characteristic of an organism. 2. A genotype is the set of alleles an individual possesses. 3. A phenotype is fixed by the genotype alone, whatever the environment.","options":["1, 2 and 3","1 and 2 only","2 and 3 only","1 and 3 only"],"correct_index":1,"explanations":["Not this: statement 3 is false, because the phenotype also depends on the environment.","Correct. Statements 1 and 2 match the lecture; statement 3 is false since gene products act in a given environment.","Not this: statement 1 is correct, so excluding it makes this option wrong.","Not this: statement 2 is correct and statement 3 is false."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"In Mendel's tall × dwarf experiment the F2 contained 787 tall and 277 dwarf plants. The ratio is closest to:","options":["1:1","2:1","3:1","4:1"],"correct_index":2,"explanations":["1:1 would need roughly equal numbers of tall and dwarf plants.","2:1 would need about twice as many tall as dwarf, which is well below 2.84.","Correct. 787 divided by 277 is about 2.84, which is close to 3:1.","4:1 would need about four times as many tall as dwarf, which is above 2.84."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"Why are all the F1 plants of a tall × dwarf cross tall?","options":["The dwarf allele is lost during fertilization of the zygote","Each F1 plant receives two tall alleles from its parents","Dwarfness is controlled by many genes acting together","Each F1 plant is Dd, and the tall allele is dominant"],"correct_index":3,"explanations":["Alleles are not lost; the dwarf allele is still present in the F1.","The dwarf parent contributes a d allele, so the F1 is Dd, not DD.","Height here is a single-gene on-or-off trait, not a many-gene trait.","Correct. All F1 plants carry one tall and one dwarf allele, and dominance makes them tall."]},{"difficulty":"devil","topic":"Mendel and basic terms","question":"A farmer crosses two pea lines that differ in seed weight. The F2 plants show a smooth range of weights, not distinct classes. What is the best explanation?","options":["Seed weight is a quantitative trait controlled by many genes","The law of segregation does not apply to pea plants at all","The F1 plants must have been tall rather than dwarf","Dominance is complete, so only two classes should appear"],"correct_index":0,"explanations":["Correct. Quantitative traits such as seed weight depend on many genes, so they do not give Mendel's simple classes.","Segregation still applies; the smooth range comes from many genes acting together.","Height of the F1 plants is irrelevant to seed weight.","Complete dominance at one locus would give two classes, but seed weight involves many genes."]},{"difficulty":"easy","topic":"Monohybrid cross and segregation","question":"What did Mendel call the rule that the two factors for a trait separate into different gametes?","options":["The principle of independent assortment","The principle (law) of segregation","The principle of dominance only","The principle of blending inheritance"],"correct_index":1,"explanations":["Independent assortment concerns different genes being inherited independently, not the separation of one pair.","Correct. Fertilization gives two factors per trait, and they separate into different gametes: the rule of segregation.","Dominance describes which allele shows in a heterozygote; it does not describe separation into gametes.","Blending inheritance is not Mendel's idea and contradicts his results."]},{"difficulty":"medium","topic":"Monohybrid cross and segregation","question":"What does \"purity of gametes\" mean in Mendel's principle of segregation?","options":["Each gamete carries one allele of each pair, not a mixture","Each gamete carries both alleles of every pair together","Gametes are completely free from every kind of mutation","Gametes come only from parents that are homozygous"],"correct_index":0,"explanations":["Correct. Segregation separates the paired alleles so each gamete carries one of them.","Carrying both alleles would contradict segregation.","Purity here refers to alleles remaining separate, not to freedom from mutation.","Heterozygous parents also produce gametes, each carrying one pure allele."]},{"difficulty":"medium","topic":"Monohybrid cross and segregation","question":"A heterozygous Dd plant produces which gametes?","options":["All Dd","Half D and half d","All D","Three D for every d"],"correct_index":1,"explanations":["A gamete carries one allele, so no gamete is Dd.","Correct. Segregation gives D and d gametes in equal numbers.","If all gametes were D the plant would be homozygous DD, not Dd.","A 3:1 ratio is for phenotypes in the F2, not for the gametes of one Dd plant."]},{"difficulty":"hard","topic":"Monohybrid cross and segregation","question":"Why can the separation of alleles be detected only in a heterozygous parent?","options":["Only Dd plants undergo meiosis to produce gametes","Only Dd plants carry a dominant allele for the trait","Only Dd makes two kinds of gametes; DD and dd each make one","DD and dd plants cannot form functional gametes at all"],"correct_index":2,"explanations":["All parents undergo meiosis; the difference is whether the gametes differ.","Both DD and Dd carry a dominant allele, so that does not explain it.","Correct. A heterozygote gives D and d gametes, so the separation shows up in its offspring.","DD and dd plants form gametes normally, but all gametes are identical."]},{"difficulty":"hard","topic":"Monohybrid cross and segregation","question":"Two Dd plants are crossed. Which genotype ratio is expected in the offspring?","options":["3 DD : 1 dd","1 DD : 1 Dd : 1 dd","1 Dd : 1 dd","1 DD : 2 Dd : 1 dd"],"correct_index":3,"explanations":["There are no 3 DD : 1 dd plants; three-to-one is the phenotypic ratio.","Dd arises in two ways, so it is twice as common as DD or dd.","This is the testcross ratio and leaves out DD.","Correct. Combining D and d gametes from each parent gives DD, Dd, Dd and dd."]},{"difficulty":"hard","topic":"Monohybrid cross and segregation","question":"Of 400 offspring from a Dd × Dd cross, how many are expected to be dwarf (dd) and how many heterozygous (Dd)?","options":["100 dwarf and 200 heterozygous","100 dwarf and 100 heterozygous","200 dwarf and 100 heterozygous","300 dwarf and 100 heterozygous"],"correct_index":0,"explanations":["Correct. The genotypic ratio is 1:2:1, so dd is a quarter (100) and Dd is a half (200).","Dd is twice as frequent as dd, not equal to it.","Dwarf is the quarter, not the half, and Dd is the half.","Three quarters are tall (DD plus Dd), not dwarf."]},{"difficulty":"devil","topic":"Monohybrid cross and segregation","question":"A tall F2 plant from a Dd × Dd cross is chosen at random. What is the probability that it is heterozygous?","options":["1/2","1/3","2/3","3/4"],"correct_index":2,"explanations":["1/2 is the share of Dd among all F2 plants, not among tall plants only.","1/3 is the share of DD among the tall plants.","Correct. Tall plants are 1/4 DD plus 2/4 Dd, so 2 of every 3 tall plants are Dd.","3/4 is the fraction of the F2 that is tall."]},{"difficulty":"hard","topic":"Monohybrid cross and segregation","question":"Assertion: In a Dd × Dd cross the dwarf phenotype reappears in the F2. Reason: Each Dd parent makes d gametes, so two d gametes can meet at fertilization.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. The d gametes from both parents can unite to give dd, so the reason explains the reappearance.","Not this: the reason is not unrelated; it is exactly why dd plants appear.","Not this: the reason is true, since a Dd parent does make d gametes.","Not this: the assertion is true, since dwarf plants reappear in the F2."]},{"difficulty":"hard","topic":"Monohybrid cross and segregation","question":"Which statements about the F1 (Dd) plants of a tall × dwarf cross are correct? 1. The F1 is hybrid for only one character. 2. Its tall appearance is due to a dominant allele. 3. It will breed true for tallness when self-fertilized.","options":["1 and 2 only","1, 2 and 3","2 and 3 only","1 and 3 only"],"correct_index":0,"explanations":["Correct. The F1 is a monohybrid and its tallness is due to the dominant allele; it does not breed true.","Not this: statement 3 is false, because self-fertilizing Dd gives dwarf offspring as well.","Not this: statement 1 is correct, so leaving it out is wrong.","Not this: statement 2 is correct and statement 3 is false."]},{"difficulty":"medium","topic":"Testcross and backcross","question":"A cross of an organism of unknown genotype to a homozygous recessive organism is called a:","options":["Backcross","Testcross","Reciprocal cross","Monohybrid cross"],"correct_index":1,"explanations":["A backcross mates the F1 to a parent or an individual with a parental genotype.","Correct. The lecture defines a testcross as a cross to a known homozygous recessive.","A reciprocal cross swaps the sexes of the parents; it is not defined in the lecture as this.","A monohybrid cross is defined by one character, not by using a recessive parent."]},{"difficulty":"hard","topic":"Testcross and backcross","question":"What is the key difference between a testcross and a backcross?","options":["A backcross always uses a homozygous recessive parent, a testcross does not","A testcross uses only the F1, while a backcross uses unrelated plants","They are identical in every case, with no difference between them","A testcross always uses a homozygous recessive parent, a backcross need not"],"correct_index":3,"explanations":["This reverses the two crosses: the testcross is the one with the recessive tester.","A backcross uses a parent or parental genotype, not unrelated plants.","They overlap only when the backcross parent happens to be homozygous recessive.","Correct. In a testcross the recessive homozygote is always one parent; in a backcross the F1 is crossed to a parent or parental genotype."]},{"difficulty":"medium","topic":"Testcross and backcross","question":"An F1 (Dd) plant is crossed back to the dwarf (dd) variety. What offspring ratio is expected?","options":["3 tall : 1 dwarf","1 tall : 1 dwarf","All tall","All dwarf"],"correct_index":1,"explanations":["3:1 is the F2 ratio from Dd × Dd, not this cross.","Correct. Dd gives D and d gametes and dd gives only d, so half the offspring are tall and half dwarf.","Half of the offspring receive d from both parents and are dwarf.","Dwarf plants appear only when dd forms, which here happens half the time, not always."]},{"difficulty":"devil","topic":"Testcross and backcross","question":"Assertion: Crossing an F1 (Dd) plant back to its dwarf (dd) parent is both a backcross and a testcross. Reason: The dwarf parent is homozygous recessive and is one of the F1 plant's parents.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. The dwarf parent is a parent (so it is a backcross) and is homozygous recessive (so it is a testcross).","Not this: the reason is not just true; it is exactly why both labels apply.","Not this: the reason is true, since the dwarf plant is homozygous recessive and a parent.","Not this: the assertion is true, because both definitions are met."]},{"difficulty":"devil","topic":"Testcross and backcross","question":"Classify each cross. (i) A tall plant of unknown genotype, unrelated to the dwarf plant, × a dwarf (dd) plant. (ii) An F1 (Dd) plant × its tall (DD) parent. (iii) An F1 (Dd) plant × its dwarf (dd) parent.","options":["(i) backcross only; (ii) testcross only; (iii) both a testcross and a backcross","(i) testcross only; (ii) testcross only; (iii) backcross only","(i) testcross only; (ii) backcross only; (iii) both a testcross and a backcross","(i) both a testcross and a backcross; (ii) backcross only; (iii) testcross only"],"correct_index":2,"explanations":["Not this: (i) is a testcross, since the unknown plant is not necessarily the F1 of a parent, and (ii) is not a testcross.","Not this: (ii) uses a DD parent, so it is not a testcross, and (iii) is both.","Correct. (i) uses a recessive tester, so it is a testcross only; (ii) is a backcross to a dominant parent; (iii) satisfies both definitions.","Not this: (i) is not necessarily a backcross, and (iii) is both rather than a testcross only."]},{"difficulty":"hard","topic":"Testcross and backcross","question":"Why can a carrier (Dd) not be recognised by its appearance?","options":["Carriers have no recessive allele in any of their cells","Recessive alleles occur only in gametes, never in body cells","The dominant allele masks the recessive, so Dd looks like DD","The Dd phenotype is intermediate and cannot be classified"],"correct_index":2,"explanations":["A carrier has one recessive allele, which is why it is called a carrier.","Recessive alleles are present in body cells as well as in gametes.","Correct. Recessive alleles are expressed only in homozygous dd, so carriers look dominant.","In Mendel's peas Dd looks tall, not intermediate."]},{"difficulty":"devil","topic":"Testcross and backcross","question":"A tall plant of unknown genotype is testcrossed and all 30 offspring are tall. What is the most reasonable conclusion?","options":["The parent is very likely DD; a Dd parent would rarely give 30 tall","The parent is certainly DD, since chance cannot affect 30 offspring","The parent is Dd, since all offspring show the dominant trait","The parent is dd, since the tester it was crossed with was recessive"],"correct_index":0,"explanations":["Correct. A Dd parent gives about half dwarf offspring, so 30 tall in a row is very unlikely, though not strictly impossible.","Chance deviation can occur at any sample size, so certainty is not justified.","A Dd parent would give about half dwarf, so all tall points away from Dd.","The unknown parent is tall, so it cannot be dd."]},{"difficulty":"hard","topic":"Testcross and backcross","question":"Why is a homozygous recessive plant used as the tester parent in a testcross?","options":["It always gives tall offspring, whatever the other parent is","It forces the unknown parent to self-fertilize before crossing","It changes the alleles of the unknown parent during the cross","It makes only d gametes, so offspring reveal the other parent's gametes"],"correct_index":3,"explanations":["A dd plant is dwarf and does not always give tall offspring.","The aim is a controlled cross, not self-fertilization.","Crossing does not change the alleles of the other parent.","Correct. Because dd supplies only d gametes, every offspring phenotype reflects the gamete from the unknown parent."]},{"difficulty":"medium","topic":"Dihybrid cross","question":"In the cross of round, yellow seeds with wrinkled, green seeds, all the F1 had round, yellow seeds. What does this show?","options":["The wrinkled and green alleles are lost in the F1","Round and yellow are recessive to wrinkled and green","Round and yellow are dominant over wrinkled and green","The two genes are always inherited together as a unit"],"correct_index":2,"explanations":["The recessive alleles are present but masked, and they reappear in the F2.","If they were recessive, the F1 would not show them.","Correct. Only the dominant traits show in the F1 hybrids.","The F2 shows all four combinations, so the two genes are not always inherited together."]},{"difficulty":"hard","topic":"Dihybrid cross","question":"From 556 F2 seeds the numbers were 315 round yellow, 108 round green, 101 wrinkled yellow and 32 wrinkled green. Which ratio do these closely fit?","options":["3:1","9:3:3:1","1:1:1:1","1:2:1"],"correct_index":1,"explanations":["3:1 is the monohybrid ratio for one gene pair.","Correct. 315:108:101:32 divided by 556 is close to 9/16, 3/16, 3/16 and 1/16.","1:1:1:1 is the dihybrid backcross ratio.","1:2:1 is a genotypic ratio for one gene pair."]},{"difficulty":"hard","topic":"Dihybrid cross","question":"If the 556 F2 seeds follow a 9:3:3:1 ratio exactly, about how many should be round and yellow?","options":["About 313","About 417","About 104","About 35"],"correct_index":0,"explanations":["Correct. 9/16 of 556 is about 313.","417 is 3/4 of 556, the share for one dominant trait alone.","104 is 3/16 of 556, which fits a class showing only one dominant trait.","35 is 1/16 of 556, which fits the double recessive class."]},{"difficulty":"hard","topic":"Dihybrid cross","question":"How does the product rule explain the 9:3:3:1 ratio?","options":["It adds two 3:1 ratios together to give a 6:2 ratio","It assumes the F1 produces only two kinds of gamete","It assumes the two genes are always inherited together","It treats the cross as two independent 3:1 crosses, (3:1)²"],"correct_index":3,"explanations":["Adding the ratios would give 6:2, which is not what Mendel observed.","The F1 produces four kinds of gamete, not two.","The product rule needs independence, not joint inheritance.","Correct. Multiplying the probabilities from two independent monohybrid crosses gives 9:3:3:1."]},{"difficulty":"hard","topic":"Dihybrid cross","question":"Assertion: A GgWw F1 plant produces four types of gamete in equal numbers. Reason: Members of different pairs of alleles assort independently into gametes.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. Independent assortment gives GW, Gw, gW and gw in equal frequencies, so the reason explains the assertion.","Not this: the reason is not merely related; it is why the four gametes are equally frequent.","Not this: the reason is true, as it states independent assortment.","Not this: the assertion is true, since the lecture lists the four equally frequent gametes."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"A GgWw plant is testcrossed. The offspring are round yellow 24, round green 26, wrinkled yellow 25 and wrinkled green 25. Which interpretation is best?","options":["The two genes are tightly linked on one chromosome","Round and yellow are recessive traits in this plant","The plant was homozygous for both of the genes","The F1 made four gamete types in about equal numbers"],"correct_index":3,"explanations":["Tight linkage would give mostly the parental combinations, not equal numbers of all four.","Recessive traits would not appear as a dominant class in a testcross.","A homozygous plant would give only one type of gamete.","Correct. A 1:1:1:1 result fits four equally frequent gamete types."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"Round, yellow (GGWW) plants are crossed with wrinkled, green (ggww) plants. Which two F2 phenotypes are new combinations not seen in either parent?","options":["Round, green and wrinkled, yellow","Round, yellow and wrinkled, green","Round, yellow and round, green","Wrinkled, yellow and wrinkled, green"],"correct_index":0,"explanations":["Correct. The parents were round yellow and wrinkled green, so round green and wrinkled yellow are new combinations.","These are the two parental combinations.","Round yellow is a parental type, so this pair is not both new.","Wrinkled green is a parental type, so this pair is not both new."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"A cross gives offspring in a 9:3:3:1 ratio but the parental genotypes are unknown. What can the geneticist postulate?","options":["A single gene pair showing incomplete dominance in the F1","Two independent pairs of alleles, one member of each acting as dominant","Two linked genes that are always inherited together as one","A single gene with four different alleles in the population"],"correct_index":1,"explanations":["One gene pair cannot give a four-class 9:3:3:1 ratio.","Correct. A 9:3:3:1 ratio points to two independent gene pairs with dominance at each.","Fully linked genes would not give four classes in these proportions.","One gene gives at most the ratios of a monohybrid cross."]},{"difficulty":"easy","topic":"Trihybrid crosses and formulas","question":"An individual is heterozygous for n independent gene pairs. How many kinds of gametes can it produce?","options":["3ⁿ","2n","2ⁿ","n²"],"correct_index":2,"explanations":["3ⁿ is the number of F2 genotypes, not gamete types.","2n would grow only by steps of two, not by doubling.","Correct. Each heterozygous pair doubles the number of gamete types, giving 2ⁿ.","n² does not match the doubling pattern of the lecture's table."]},{"difficulty":"medium","topic":"Trihybrid crosses and formulas","question":"How many kinds of gametes can a DdGgWw plant produce?","options":["8","6","9","27"],"correct_index":0,"explanations":["Correct. Three heterozygous pairs give 2³ = 8 gamete types.","6 comes from adding 2 + 2 + 2 instead of multiplying.","9 is not a power of two and does not fit 2ⁿ.","27 is the number of F2 genotypes (3³), not gamete types."]},{"difficulty":"medium","topic":"Trihybrid crosses and formulas","question":"What is the F1 genotype of the cross DDGGWW × ddggww?","options":["DDGGWW","DdGgWw","ddggww","DdGgWW"],"correct_index":1,"explanations":["DDGGWW would be the dominant parent, not the hybrid.","Correct. Each F1 plant receives DGW from one parent and dgw from the other.","ddggww would be the recessive parent, not the hybrid.","DdGgWW would need two W alleles, but the F1 gets one W and one w."]},{"difficulty":"medium","topic":"Trihybrid crosses and formulas","question":"Why is the forked-line method preferred for a trihybrid F1 × F1 cross?","options":["The forked-line method works only when the genes are linked","The forked-line method changes the ratio to a 9:3:3:1 pattern","A Punnett square cannot be used at all for a trihybrid cross","A Punnett square needs 64 squares; forked-line combines three simple crosses"],"correct_index":3,"explanations":["The method relies on independent assortment, not linkage.","The trihybrid ratio is 27:9:9:9:3:3:3:1, not 9:3:3:1.","A Punnett square can be used, but it is cumbersome.","Correct. Treating the cross as three monohybrid crosses avoids a cumbersome 64-square table."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"If one member of each pair is dominant, what phenotypic ratio is expected from DdGgWw × DdGgWw?","options":["9:3:3:1","3:1","27:9:9:9:3:3:3:1","1:1:1:1:1:1:1:1"],"correct_index":2,"explanations":["9:3:3:1 is the dihybrid ratio, not the trihybrid one.","3:1 is the monohybrid ratio, not the trihybrid one.","Correct. Combining three 3:1 crosses gives eight phenotypic classes in this ratio.","1:1:1:1:1:1:1:1 is the trihybrid testcross ratio."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"Using the forked-line method, what fraction of DdGgWw × DdGgWw offspring show the dominant phenotype for all three traits?","options":["27/64","9/16","3/8","1/4"],"correct_index":0,"explanations":["Correct. (3/4) × (3/4) × (3/4) = 27/64.","9/16 is the dihybrid result for two dominant traits.","3/8 does not follow from multiplying three 3/4 terms.","1/4 is the chance of a single recessive trait."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"What fraction of DdGgWw × DdGgWw offspring show the recessive phenotype for all three traits?","options":["1/8","1/64","1/16","1/4"],"correct_index":1,"explanations":["1/8 would be (1/2)³, which is the chance of being heterozygous at all three.","Correct. (1/4) × (1/4) × (1/4) = 1/64.","1/16 is the dihybrid chance of two recessive traits.","1/4 is the chance of one recessive trait only."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"What fraction of DdGgWw × DdGgWw offspring have the genotype DdGgWw?","options":["1/64","1/4","1/8","27/64"],"correct_index":2,"explanations":["1/64 would be the chance of a fully homozygous recessive class.","1/4 would be the chance for only two heterozygous pairs.","Correct. Each pair gives 1/2 Dd-type heterozygotes, so (1/2)³ = 1/8.","27/64 is the share showing all three dominant phenotypes."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"A plant heterozygous for four independent gene pairs is self-fertilized. How many F2 genotypes and phenotypes are expected, with dominance at each?","options":["16 genotypes and 81 phenotypes","64 genotypes and 16 phenotypes","81 genotypes and 81 phenotypes","81 genotypes and 16 phenotypes"],"correct_index":3,"explanations":["This reverses the two values; genotypes are 81 and phenotypes are 16.","64 is 4³, but genotypes follow 3⁴, which is 81.","Phenotypes are 2ⁿ with dominance, not 3ⁿ.","Correct. For n = 4, genotypes are 3⁴ = 81 and phenotypes are 2⁴ = 16."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"Assertion: The number of F2 genotypes from n heterozygous gene pairs is 3ⁿ. Reason: Each heterozygous pair gives three genotypes in the F2, and independent pairs combine by multiplication.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. Three genotypes per pair, multiplied across n independent pairs, gives 3ⁿ.","Not this: the reason is not just true; it is how 3ⁿ arises.","Not this: the reason is true, since each pair gives DD, Dd and dd.","Not this: the assertion is true and matches the lecture's table."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"For n independent heterozygous gene pairs with dominance, which statements are correct? 1. The number of gamete types is 2ⁿ. 2. The number of F2 genotypes is 3ⁿ. 3. The number of F2 phenotypes is 3ⁿ.","options":["1 and 3 only","2 and 3 only","1, 2 and 3","1 and 2 only"],"correct_index":3,"explanations":["Not this: statement 3 is false and statement 2 is correct.","Not this: statement 1 is correct and statement 3 is false.","Not this: statement 3 is false, because phenotypes are 2ⁿ with dominance.","Correct. Gametes are 2ⁿ and genotypes are 3ⁿ; phenotypes are 2ⁿ with dominance, not 3ⁿ."]},{"difficulty":"devil","topic":"Trihybrid crosses and formulas","question":"How many gamete types and F2 genotypes can come from selfing an AaBbCCDd plant, with all gene pairs independent?","options":["16 gamete types and 81 F2 genotypes","8 gamete types and 27 F2 genotypes","8 gamete types and 81 F2 genotypes","4 gamete types and 27 F2 genotypes"],"correct_index":1,"explanations":["This counts all four pairs as heterozygous, but CC is homozygous.","Correct. Only three pairs are heterozygous, so gametes are 2³ = 8 and genotypes are 3 × 3 × 1 × 3 = 27.","8 gametes is right, but 81 genotypes would need four heterozygous pairs.","27 genotypes is right, but three heterozygous pairs give 8 gametes, not 4."]},{"difficulty":"devil","topic":"Trihybrid crosses and formulas","question":"In the testcross DdGgWw × ddggww, how many phenotypic classes are expected and in what proportions?","options":["Eight classes, each 1/8 of the offspring","Eight classes in a 27:9:9:9:3:3:3:1 ratio","Four classes, each 1/4 of the offspring","Two classes in a 3:1 ratio of offspring"],"correct_index":0,"explanations":["Correct. The F1 makes eight gamete types equally and the tester makes one, giving eight equal classes.","27:9:9:9:3:3:3:1 is the F1 × F1 ratio.","Four classes would come from a dihybrid testcross.","3:1 is a monohybrid F2 ratio."]},{"difficulty":"devil","topic":"Trihybrid crosses and formulas","question":"A plant heterozygous for five independent gene pairs is testcrossed. How many phenotypic classes appear, and how are they distributed?","options":["25 classes in equal proportions","32 classes in a 9:3:3:1-based ratio","32 classes in equal proportions","10 classes in equal proportions"],"correct_index":2,"explanations":["25 is 5², which is not the doubling pattern.","The testcross gives equal classes, not a 9:3:3:1-based ratio.","Correct. 2⁵ gamete types give 32 equally frequent testcross classes.","10 comes from 2 × 5, not from 2⁵."]},{"difficulty":"devil","topic":"Trihybrid crosses and formulas","question":"Assertion: A dihybrid F2 contains nine different genotypes. Reason: A dihybrid F2 contains four different phenotypes when dominance is present.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":1,"explanations":["Not this: the reason is true but it does not explain why there are nine genotypes.","Correct. Nine genotypes (3²) and four phenotypes (2²) are both true, but the phenotype count does not explain the genotype count.","Not this: the reason is true, since 2² = 4.","Not this: the assertion is true since 3² = 9."]},{"difficulty":"devil","topic":"Trihybrid crosses and formulas","question":"Assertion: A Punnett square for DdGgWw × DdGgWw needs 64 squares. Reason: Each DdGgWw parent produces four kinds of gamete.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":2,"explanations":["Not this: the reason is false, so it cannot be a correct explanation.","Not this: the reason is false because each parent makes eight kinds of gamete.","Correct. Eight gamete types per parent give 8 × 8 = 64 squares; four per parent would give only 16.","Not this: the assertion is true, and the reason is false."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"Assertion: A dihybrid backcross to the full recessive parent gives a 9:3:3:1 ratio. Reason: The F1 produces four kinds of gamete in equal numbers.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":3,"explanations":["Not this: the assertion is false, because the backcross ratio is 1:1:1:1.","Not this: the assertion is false.","Not this: the reason is true, so option C is wrong.","Correct. The backcross gives 1:1:1:1, not 9:3:3:1, but the F1 does make four gamete types equally."]},{"difficulty":"medium","topic":"Chi-square analysis","question":"Which formula is used in chi-square analysis?","options":["χ² = Σ(o − e)/e","χ² = Σ(o + e)²/e","χ² = Σ(o − e)² × e","χ² = Σ(o − e)²/e"],"correct_index":3,"explanations":["Without squaring, positive and negative deviations would cancel.","Adding o and e does not measure deviation.","Multiplying by e instead of dividing reverses the scaling.","Correct. Each deviation is squared and divided by the expected value, then summed."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"In a 3:1 test with 1000 offspring, the observed counts are 740 dominant and 260 recessive. What is the chi-square contribution of the dominant class?","options":["About 0.40","About 0.53","About 1.33","About 0.13"],"correct_index":3,"explanations":["0.40 is the contribution of the recessive class.","0.53 is the total of both classes.","1.33 would come from dividing by the wrong expected value.","Correct. Expected is 750, so (740 − 750)²/750 = 100/750 ≈ 0.13."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"For the same data (740 dominant, 260 recessive; expected 750 and 250), what is the total chi-square value?","options":["About 0.53","About 0.26","About 1.06","About 0.13"],"correct_index":0,"explanations":["Correct. 0.13 + 0.40 gives about 0.53.","0.26 doubles the first class only.","1.06 doubles the total and does not match the calculated sum.","0.13 is only the dominant-class contribution."]},{"difficulty":"medium","topic":"Chi-square analysis","question":"Why is the degrees of freedom 1 for a 3:1 ratio but 3 for a 9:3:3:1 ratio?","options":["Degrees of freedom equal the number of offspring minus one","Degrees of freedom equal the categories minus one: 2 − 1 and 4 − 1","Degrees of freedom equal the largest number in the ratio","Degrees of freedom equal the number of genes in the cross"],"correct_index":1,"explanations":["Sample size is not used to find degrees of freedom here.","Correct. A 3:1 ratio has two categories and 9:3:3:1 has four.","The largest number in the ratio is 3 for 3:1, which would not give 1.","A dihybrid has two genes but 3 degrees of freedom, so gene count is not the rule."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"A cross is expected to give a 3:1 ratio. Among 200 offspring, 152 are dominant and 48 are recessive. What is the chi-square value?","options":["About 0.04","About 1.07","About 0.11","About 4.00"],"correct_index":2,"explanations":["0.04 uses the expected counts incorrectly.","1.07 belongs to a different data set.","Correct. Expected are 150 and 50: 4/150 + 4/50 ≈ 0.03 + 0.08 ≈ 0.11.","4.00 is the sum of the squared deviations only, without dividing by the expected values."]},{"difficulty":"devil","topic":"Chi-square analysis","question":"A dihybrid cross of 160 offspring gives 96 : 28 : 26 : 10 for the four phenotypes. Tested against 9:3:3:1, what are the chi-square value and degrees of freedom?","options":["About 1.07 with 1 degree of freedom","About 56 with 3 degrees of freedom","About 1.07 with 3 degrees of freedom","About 0.27 with 4 degrees of freedom"],"correct_index":2,"explanations":["The value is right, but four categories give 3 degrees of freedom, not 1.","56 is the sum of squared deviations, not divided by the expected values.","Correct. Expected counts are 90, 30, 30 and 10, so χ² ≈ 0.40 + 0.13 + 0.53 + 0 ≈ 1.07 with 4 − 1 = 3 degrees of freedom.","The degrees of freedom would be 3, not 4, and 0.27 is not the value."]},{"difficulty":"devil","topic":"Chi-square analysis","question":"Two experiments are tested against a 3:1 hypothesis. In A, 20 progeny give 12 dominant and 8 recessive. In B, 2000 progeny give 1200 dominant and 800 recessive. Which statement is correct?","options":["Both give the same chi-square, because the percentage split is the same in each","A has the larger chi-square, because it has fewer offspring in total","Neither can be tested, because a 3:1 test needs exact counts of offspring","B has a far larger chi-square: the same split is less likely by chance in a large sample"],"correct_index":3,"explanations":["Chi-square depends on counts, not just proportions, so the values differ.","A smaller sample tolerates larger deviations, so its chi-square is smaller here.","Chi-square exists to test observed counts that do not match exactly.","Correct. A gives χ² ≈ 2.4 and B gives ≈ 240, because the impact of chance deviation shrinks as the sample grows."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"Assertion: Tossing four coins can give all heads, but 1000 tosses practically cannot. Reason: The smaller the sample, the greater the impact of chance deviation.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":0,"explanations":["Correct. A small sample is more affected by chance, so the reason explains the assertion.","Not this: the reason is not unrelated; it is the principle behind the assertion.","Not this: the reason is true, as the lecture states.","Not this: the assertion is true, because 1000 tosses give about 500 heads."]},{"difficulty":"medium","topic":"Chi-square analysis","question":"What does a chi-square goodness-of-fit test tell a geneticist?","options":["How well observed results fit an expected ratio, allowing for chance","Which allele of a gene is dominant over the other alleles","How many separate genes control the trait being studied","The exact genotype of each individual offspring in the cross"],"correct_index":0,"explanations":["Correct. Goodness of fit compares observed and expected results to judge whether the difference is acceptable.","Dominance is found from crosses, not from the chi-square test.","The test does not count genes.","The test works on counts of classes, not individual genotypes."]},{"difficulty":"easy","topic":"Chi-square analysis","question":"By convention, what P value is the standard cutoff for acceptable goodness of fit?","options":["0.50","0.05","0.10","0.01"],"correct_index":1,"explanations":["0.50 is far higher than the convention.","Correct. By convention 0.05 is the arbitrary standard.","0.10 is not the conventional cutoff in the lecture.","0.01 is stricter than the lecture's standard."]},{"difficulty":"easy","topic":"Chi-square analysis","question":"In the formula χ² = Σ(o − e)²/e, what does \"o\" stand for?","options":["The observed count for a category","The odds ratio of the two classes","The original sample size of the cross","The overall probability of the outcome"],"correct_index":0,"explanations":["Correct. \"o\" is the observed count in each category and \"e\" is the expected count.","The odds ratio is not part of this formula.","The original sample size is not what o represents.","The overall probability is not what o represents."]},{"difficulty":"medium","topic":"Chi-square analysis","question":"Which of the following is NOT one of the four assumptions behind Mendel's 3:1 and 9:3:3:1 ratios as listed in the lecture?","options":["Dominance and recessiveness of alleles","Segregation of the paired alleles","Linkage between the two genes","Random fertilization of the gametes"],"correct_index":2,"explanations":["Dominance and recessiveness is one of the four listed assumptions.","Segregation is one of the four listed assumptions.","Correct. The four listed assumptions are dominance, segregation, independent assortment and random fertilization; linkage is not among them.","Random fertilization is one of the four listed assumptions."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"A dihybrid cross test gives P = 0.26. Which interpretation is correct?","options":["There is a 74% probability that the hypothesis is true","About a 26% chance that a deviation this large arose by chance","26% of the offspring deviated from the expected ratio","The data are unacceptable because 0.26 is far from 1"],"correct_index":1,"explanations":["P does not give the probability that the hypothesis is true.","Correct. A P of 0.26 means about one chance in four that the deviation is due to chance.","P is not the share of offspring that deviated.","Any P above 0.05 is acceptable, so 0.26 is acceptable."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"A chi-square test of a 9:3:3:1 hypothesis gives P = 0.04. What is the correct decision?","options":["Accept the ratio, because P is close to zero","Accept the ratio, because the sample is large","Reject the ratio, because P is above 0.05","Reject the hypothesised ratio, because P is below 0.05"],"correct_index":3,"explanations":["A P near zero means the deviation is unlikely to be chance, so the ratio is rejected.","Sample size does not override the P value rule.","A P above 0.05 would be acceptable, but this P is below 0.05.","Correct. A P below 0.05 means the data do not fit the hypothesised ratio."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"Which statements about P values in chi-square analysis are correct? 1. By convention, 0.05 is the cutoff. 2. A P value below 0.05 means the data do not fit the hypothesised ratio. 3. A P value above 0.05 proves the hypothesis is true.","options":["1, 2 and 3","1 and 3 only","1 and 2 only","2 and 3 only"],"correct_index":2,"explanations":["Not this: statement 3 is false, because an acceptable P means consistency, not proof.","Not this: statement 2 is correct and statement 3 is false.","Correct. Statements 1 and 2 match the lecture; an acceptable P shows consistency, not proof.","Not this: statement 1 is correct and statement 3 is false."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"In the dihybrid example, the four class contributions are 0.71, 0.34, 2.36 and 0.77. What is the total chi-square value?","options":["4.81","3.41","4.18","1.05"],"correct_index":2,"explanations":["4.81 transposes the digits of the total.","3.41 leaves out the last class (0.77).","Correct. 0.71 + 0.34 + 2.36 + 0.77 = 4.18.","1.05 includes only the first two classes."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"Why is each deviation (o − e) squared in the chi-square formula?","options":["So positive and negative deviations cannot cancel and big ones weigh more","To convert each deviation directly into a probability value","Because squaring is needed only when the sample is below 100","To make the degrees of freedom equal to one in every case"],"correct_index":0,"explanations":["Correct. Squaring keeps every deviation positive and gives large deviations more weight.","Chi-square is converted to P later using a table or graph, not by squaring.","Squaring is part of the formula for all sample sizes.","Squaring has no effect on degrees of freedom."]},{"difficulty":"devil","topic":"Chi-square analysis","question":"Assertion: A P value of 0.26 proves that the 9:3:3:1 hypothesis is true. Reason: P values between 0.05 and 1.0 are considered acceptable in chi-square analysis.","options":["Both the assertion and the reason are true, and the reason is the correct explanation of the assertion.","Both the assertion and the reason are true, but the reason is not the correct explanation of the assertion.","The assertion is true, but the reason is false.","The assertion is false, but the reason is true."],"correct_index":3,"explanations":["Not this: the assertion is false, so this option fails.","Not this: the assertion is false, so this option fails.","Not this: the reason is true, so this option fails.","Correct. A P of 0.26 only shows the data are consistent with the ratio, not that it is proven true; the reason is true."]},{"difficulty":"devil","topic":"Chi-square analysis","question":"Experiment 1 gives 740 dominant : 260 recessive against a 3:1 hypothesis (χ² ≈ 0.53). Experiment 2 has ten times the offspring with the same percentage split (7400 : 2600). What happens?","options":["χ² stays at about 0.53, so the 3:1 hypothesis is accepted","χ² rises to about 5.3, P falls below 0.05, and the 3:1 ratio is rejected","χ² falls to about 0.05, so the 3:1 hypothesis is accepted","χ² rises to about 5.3, yet the 3:1 hypothesis is still accepted"],"correct_index":1,"explanations":["Chi-square depends on counts, so it changes with sample size.","Correct. Counts scale by ten, so χ² scales by ten to about 5.3, which is below P = 0.05 for one degree of freedom.","A larger sample with the same split increases χ², it does not reduce it.","For one degree of freedom, a χ² of about 5.3 corresponds to P below 0.05."]},{"difficulty":"devil","topic":"Chi-square analysis","question":"A student tests a 9:3:3:1 hypothesis but uses 1 degree of freedom instead of 3. For the same χ², how does the P value compare with the correct one?","options":["It is larger, so a poorly fitting hypothesis might be accepted","It is identical, because degrees of freedom do not affect P","It is exactly zero, whatever the chi-square value is","It is smaller, risking rejection of a hypothesis that actually fits"],"correct_index":3,"explanations":["Fewer degrees of freedom make P smaller, not larger.","The lecture stresses that degrees of freedom must always be considered.","P is not zero for finite χ².","Correct. More categories allow more deviation by chance, so using too few degrees of freedom makes a given χ² look less likely than it is."]},{"difficulty":"devil","topic":"Chi-square analysis","question":"Decide whether each result is acceptable for goodness of fit. (i) P = 0.60 (ii) P = 0.03 (iii) P = 0.12","options":["(i) unacceptable; (ii) acceptable; (iii) unacceptable","(i) acceptable; (ii) acceptable; (iii) unacceptable","(i) unacceptable; (ii) unacceptable; (iii) acceptable","(i) acceptable; (ii) unacceptable; (iii) acceptable"],"correct_index":3,"explanations":["Not this: it reverses all three decisions.","Not this: (ii) is below 0.05, so it is unacceptable, and (iii) is above 0.05, so it is acceptable.","Not this: (i) is above 0.05, so it is acceptable.","Correct. P = 0.60 and 0.12 are above 0.05 and acceptable; P = 0.03 is below 0.05 and unacceptable."]},{"difficulty":"hard","topic":"Chi-square analysis","question":"In the dihybrid example (expected 563, 187, 187, 63; observed 583, 195, 166, 56), which class contributes most to the chi-square value?","options":["The 9/16 class with 583 observed","The 3/16 class with 166 observed","The 3/16 class with 195 observed","The 1/16 class with 56 observed"],"correct_index":1,"explanations":["The 9/16 class contributes only 0.71.","Correct. That class contributes 2.36, much more than any other.","The 3/16 class with 195 contributes only 0.34.","The 1/16 class contributes only 0.77."]},{"difficulty":"hard","topic":"Early theories of heredity","question":"Which statement best matches the lecture's conclusion about heredity?","options":["Parents pass on DNA instructions that, with the environment, direct development","Parents transmit a ready-made miniature version of the offspring","Parents transmit acquired characteristics through gemmules in the blood","Offspring development is determined by the environment alone, not by genes"],"correct_index":0,"explanations":["Correct. The conclusion is that genetic information in DNA, interacting with the environment, directs the organism's development.","A miniature offspring is the rejected preformation idea.","Gemmules and acquired characteristics are the rejected pangenesis and Lamarckian ideas.","The lecture says genetic information is essential, not that the environment acts alone."]},{"difficulty":"hard","topic":"Monohybrid cross and segregation","question":"Mendel's F2 of 787 tall and 277 dwarf plants gives 2.84:1, not exactly 3:1. What is the best explanation?","options":["Dwarf is partly dominant over tall in the heterozygote","Segregation failed to occur in some of the plants","The tall allele is actually recessive to dwarf","Chance deviation, which is expected in a finite sample"],"correct_index":3,"explanations":["The F1 were all tall, so the dwarf allele is fully recessive, not partly dominant.","A near-3:1 ratio fits segregation, which did not fail.","The F1 were all tall, so tall is dominant.","Correct. Small departures from a predicted ratio are expected from chance deviation."]},{"difficulty":"medium","topic":"Mendel and basic terms","question":"In Mendel's tall × dwarf cross, which statement uses the lecture's terms correctly?","options":["Tall is the character; height is one trait of it","Height and tall are both alleles of the same gene","Height is the character; tall is one trait of it","Height is the genotype; tall is the gene's locus"],"correct_index":2,"explanations":["This reverses the two terms: height is the character and tall is a trait.","Alleles are forms of a gene; height and tall are not both alleles.","Correct. A character is a feature that varies, and each variant of it is a trait.","Genotype is the allele makeup and locus is a position, so neither fits."]},{"difficulty":"medium","topic":"Dihybrid cross","question":"What does a dihybrid cross consider?","options":["One trait followed through two generations","Two plants that share the same genotype","Two traits followed at the same time","Three alleles of a single gene at once"],"correct_index":2,"explanations":["Following one trait is a monohybrid cross.","The number of plants with the same genotype does not define a dihybrid cross.","Correct. A dihybrid cross follows two traits simultaneously.","A dihybrid cross concerns two genes, not three alleles of one gene."]},{"difficulty":"hard","topic":"Dihybrid cross","question":"Which gametes can the F1 (GgWw) of a GGWW × ggww cross produce?","options":["GW, Gw, gW and gw","GW and gw only","Gg and Ww only","GGWW and ggww"],"correct_index":0,"explanations":["Correct. Independent assortment gives all four combinations.","Only GW and gw would arise if the two genes were always inherited together.","A gamete carries one allele per gene, so Gg is not a gamete.","GGWW and ggww are the parental genotypes, not gametes."]},{"difficulty":"hard","topic":"Trihybrid crosses and formulas","question":"In the testcross DdGgWw × ddggww, how many kinds of gametes does each parent produce?","options":["Four kinds from each of the two parents","Eight kinds from each of the two parents","One from the F1 and eight from the recessive parent","Eight from the F1, one from the recessive"],"correct_index":3,"explanations":["Four would apply to a dihybrid, not a trihybrid.","The recessive parent is homozygous, so it makes only one kind.","This reverses the two parents: the F1 makes eight and the recessive makes one.","Correct. The triple heterozygote gives 2³ = 8 gamete types and the full recessive gives only dgw."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"A dihybrid F1 (GgWw) is self-fertilized and gives 320 F2 seeds. How many are expected to be heterozygous for both genes (GgWw)?","options":["180","80","20","160"],"correct_index":1,"explanations":["180 is the expected number of round, yellow phenotypes (9/16), not the GgWw genotype.","Correct. The chance is 1/2 × 1/2 = 1/4, and 1/4 of 320 is 80.","20 is the expected number of double recessives (1/16).","160 would be half of the seeds, which treats only one gene pair as heterozygous."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"Among the F2 seeds that are round and yellow from GgWw × GgWw, what fraction is GgWw?","options":["4/9","1/4","9/16","1/2"],"correct_index":0,"explanations":["Correct. Round yellow is 9/16 of the F2 and GgWw is 4/16, so within round yellow it is 4/9.","1/4 is the share of GgWw among all F2 seeds, not among round yellow ones.","9/16 is the share of round yellow among all F2 seeds.","1/2 would treat only one gene pair as heterozygous."]},{"difficulty":"devil","topic":"Dihybrid cross","question":"Two double heterozygotes are crossed and give mostly parental types with few new combinations, instead of 9:3:3:1. Which explanation is best?","options":["Dominance is absent at both of the gene loci in the cross","Segregation did not occur in either of the parents' gametes","The sample of offspring was far too large to be reliable","They may not assort independently, e.g. if linked on one chromosome"],"correct_index":3,"explanations":["Without dominance the ratio would change, but the main issue here is too few new combinations.","The parental types still show allele separation, so segregation did occur.","A larger sample usually improves agreement with the ratio, not worsens it.","Correct. A 9:3:3:1 ratio depends on independent assortment; departures suggest the assumption fails."]},{"difficulty":"hard","topic":"Early theories of heredity","question":"Which idea did the germplasm theory seriously challenge, and who proposed it?","options":["Epigenesis, challenged by August Weismann","Pangenesis, challenged by August Weismann","Pangenesis, challenged by Charles Darwin","Preformation, challenged by Charles Darwin"],"correct_index":1,"explanations":["Epigenesis was proposed by Wolff and von Baer, not challenged by Weismann.","Correct. Weismann's germplasm theory was the first serious challenge to pangenesis.","Darwin proposed pangenesis, so he was not its challenger.","Darwin proposed pangenesis and did not challenge preformation with germplasm theory."]},{"difficulty":"devil","topic":"Trihybrid crosses and formulas","question":"In a DdGgWw × DdGgWw cross, what is the probability that an offspring shows the dominant phenotype for traits D and G but the recessive phenotype for trait W?","options":["27/64","3/64","9/64","1/64"],"correct_index":2,"explanations":["27/64 is the share with all three dominant.","3/64 is the share with one dominant and two recessive traits.","Correct. (3/4) × (3/4) × (1/4) = 9/64.","1/64 is the share with all three recessive."]}];
+
+const TIER_INFO = {
+  easy:   { label: "EASY",   color: 0x7df9ff, css: "#7df9ff", base: 100 },
+  medium: { label: "MEDIUM", color: 0xffd166, css: "#ffd166", base: 200 },
+  hard:   { label: "HARD",   color: 0xff9f43, css: "#ff9f43", base: 300 },
+  devil:  { label: "DEVIL",  color: 0xff4d6d, css: "#ff4d6d", base: 500 }
+};
+const TIER_ORDER = ["easy", "medium", "hard", "devil"];
+
+// ------------------------------------------------------------
+// 1. THE 3D WORLD: scene, camera, renderer
+// ------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x05060f, 30, 130);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(0, 4, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); // cap: 3x phone screens would chew battery for no gain
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0x404e77, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(5, 10, 8);
+scene.add(sun);
+
+// Starfield
+const starPositions = [];
+for (let i = 0; i < 500; i++) {
+  starPositions.push(
+    (Math.random() - 0.5) * 260,
+    Math.random() * 120 - 20,
+    (Math.random() - 0.5) * 260
+  );
+}
+const stars = new THREE.Points(
+  new THREE.BufferGeometry().setAttribute("position",
+    new THREE.Float32BufferAttribute(starPositions, 3)),
+  { color: 0x8fa8ff, size: 0.6 }
+);
+scene.add(stars);
+
+// ------------------------------------------------------------
+// 2. THE SHIP
+// ------------------------------------------------------------
+const ship = new THREE.Group();
+
+const body = new THREE.Mesh(
+  new THREE.ConeGeometry(0.7, 3, 12),
+  new THREE.MeshStandardMaterial({ color: 0x7df9ff, metalness: 0.6, roughness: 0.3 })
+);
+body.rotation.x = -Math.PI / 2;
+ship.add(body);
+
+const wingGeo = new THREE.BoxGeometry(2.6, 0.12, 1);
+const wingMat = new THREE.MeshStandardMaterial({ color: 0xff4d6d });
+const wingL = new THREE.Mesh(wingGeo, wingMat);
+wingL.position.set(-0.9, 0, 0.7);  wingL.rotation.y = 0.3;
+const wingR = wingL.clone();
+wingR.position.x = 0.9;  wingR.rotation.y = -0.3;
+ship.add(wingL, wingR);
+
+const engine = new THREE.Mesh(
+  new THREE.SphereGeometry(0.35, 12, 12),
+  new THREE.MeshBasicMaterial({ color: 0xffa94d })
+);
+engine.position.z = 1.6;
+ship.add(engine);
+
+ship.position.set(0, 1.5, 0);
+scene.add(ship);
+
+// ------------------------------------------------------------
+// 3. OBSTACLES, CRYSTALS & GATES (recycled pools)
+// ------------------------------------------------------------
+const LANES_W = 26;
+const LANES_H = 12;
+
+const asteroids = [];
+const asteroidGeo = new THREE.IcosahedronGeometry(1, 0);
+for (let i = 0; i < 30; i++) {
+  const a = new THREE.Mesh(
+    asteroidGeo,
+    new THREE.MeshStandardMaterial({ color: 0x9aa3c4, roughness: 0.9 })
+  );
+  a.userData = { active: false };
+  a.visible = false;
+  scene.add(a);
+  asteroids.push(a);
+}
+
+const crystals = [];
+const crystalGeo = new THREE.OctahedronGeometry(0.7);
+const crystalMat = new THREE.MeshStandardMaterial({
+  color: 0x25f4ee, emissive: 0x25f4ee, emissiveIntensity: 1.2
+});
+for (let i = 0; i < 10; i++) {
+  const c = new THREE.Mesh(crystalGeo, crystalMat);
+  c.userData = { active: false };
+  c.visible = false;
+  scene.add(c);
+  crystals.push(c);
+}
+
+// Checkpoint gates: glowing rings the ship flies through.
+// Ring colour tells you the difficulty of the question ahead!
+const gates = [];
+const gateGeo = new THREE.TorusGeometry(3.4, 0.28, 10, 40);
+for (let i = 0; i < 3; i++) {
+  const g = new THREE.Mesh(
+    gateGeo,
+    new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: 0.9 })
+  );
+  g.userData = { active: false, tier: "easy" };
+  g.visible = false;
+  scene.add(g);
+  gates.push(g);
+}
+
+function spawnAsteroid() {
+  const a = asteroids.find(x => !x.userData.active);
+  if (!a) return;
+  a.userData.active = true;
+  a.visible = true;
+  a.position.set(
+    (Math.random() - 0.5) * LANES_W,
+    (Math.random() - 0.5) * LANES_H + 2,
+    -140
+  );
+  const s = 0.8 + Math.random() * 2.2;
+  a.scale.setScalar(s);
+  a.userData.radius = s;
+  a.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+  a.userData.spin = new THREE.Vector3((Math.random() - 0.5) / 2, (Math.random() - 0.5) / 2, 0);
+}
+
+function spawnCrystal() {
+  const c = crystals.find(x => !x.userData.active);
+  if (!c) return;
+  c.userData.active = true;
+  c.visible = true;
+  c.position.set(
+    (Math.random() - 0.5) * LANES_W * 0.8,
+    (Math.random() - 0.5) * LANES_H + 2,
+    -140
+  );
+}
+
+function spawnGate(tier) {
+  const g = gates.find(x => !x.userData.active);
+  if (!g) return;
+  g.userData.active = true;
+  g.userData.tier = tier;
+  g.material.color.setHex(TIER_INFO[tier].color);
+  g.visible = true;
+  g.scale.setScalar(1);
+}
+
+// ------------------------------------------------------------
+// 4. SOUND (generated, no files needed)
+// ------------------------------------------------------------
+let audio = null;
+// iOS rule: an AudioContext may only be created (or resumed) inside a user
+// gesture. Beeps fired from the game loop would leave it muted forever,
+// so we arm it on the first tap / click / key press instead.
+function initAudio() {
+  if (!audio) {
+    const Ctx = window.AudioContext || window.webkitAudioContext; // webkitAudioContext: older iOS Safari
+    if (Ctx) audio = new Ctx();
+  }
+  if (audio && audio.state === "suspended") audio.resume();
+}
+["touchstart", "mousedown", "keydown"].forEach(ev =>
+  window.addEventListener(ev, initAudio));
+
+function beep(freq, length = 0.1, type = "square", volume = 0.12) {
+  try {
+    if (!audio) return; // will exist after the first gesture
+    if (audio.state === "suspended") audio.resume();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + length);
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + length);
+  } catch (err) {}
+}
+function chord(freqs, length = 0.25) { freqs.forEach((f, i) => beep(f, length, "triangle", 0.12)); }
+
+// ------------------------------------------------------------
+// 5. STUDY LAYER: pools, review queue, quiz UI
+// ------------------------------------------------------------
+// Tier ramps with gates passed: your progress owns the difficulty.
+function tierForGate(n) {
+  if (n < 3)  return "easy";
+  if (n < 7)  return "medium";
+  if (n < 12) return "hard";
+  return "devil";
+}
+
+let pools = {};        // tier -> shuffled array of bank indices
+let reviewQueue = [];  // { item, due } — wrong answers come back later
+let currentQ = null;
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function rebuildPools() {
+  pools = {};
+  for (const tier of TIER_ORDER) {
+    pools[tier] = shuffle(
+      BANK.map((q, i) => i).filter(i => BANK[i].difficulty === tier)
+    );
+  }
+}
+
+// Pick the next question: overdue reviews first, then the current
+// tier; if that pool is dry, borrow from the next-heavier tier.
+function pickQuestion(gatesPassed) {
+  const dueIdx = reviewQueue.findIndex(r => r.due <= gatesPassed);
+  if (dueIdx >= 0) {
+    const r = reviewQueue.splice(dueIdx, 1)[0];
+    return r.item;
+  }
+  let tier = tierForGate(gatesPassed);
+  let t = TIER_ORDER.indexOf(tier);
+  while (t < TIER_ORDER.length && pools[TIER_ORDER[t]].length === 0) t++;
+  if (t >= TIER_ORDER.length) { rebuildPools(); t = TIER_ORDER.indexOf(tier); } // bank exhausted: recycle
+  const idx = pools[TIER_ORDER[t]].pop();
+  return BANK[idx];
+}
+
+const quizEl = document.getElementById("quiz");
+const quizMeta = document.getElementById("quizMeta");
+const quizQ = document.getElementById("quizQ");
+const quizOpts = document.getElementById("quizOpts");
+const quizFeedback = document.getElementById("quizFeedback");
+const quizNext = document.getElementById("quizNext");
+
+let quizAnswered = false;
+
+function askQuestion() {
+  currentQ = pickQuestion(gatesPassed);
+  quizAnswered = false;
+  const info = TIER_INFO[currentQ.difficulty] || TIER_INFO.easy;
+  quizMeta.textContent =
+    `CHECKPOINT ${gatesPassed + 1} • ${info.label}` +
+    (currentQ.topic ? ` • ${currentQ.topic}` : "") +
+    (streak > 0 ? ` • streak ${streak + 1}🔥` : "");
+  quizMeta.style.color = info.css;
+  quizQ.textContent = currentQ.question;
+  quizFeedback.textContent = "";
+  quizFeedback.className = "";
+  quizNext.style.visibility = "hidden";
+  quizOpts.innerHTML = "";
+  currentQ.options.forEach((text, i) => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.innerHTML = `<span class="key">${i + 1}.</span>${text}`;
+    b.addEventListener("click", () => choose(i));
+    quizOpts.appendChild(b);
+  });
+  quizEl.style.display = "flex";
+  paused = true;
+  beep(880, 0.12, "sine", 0.1);
+}
+
+function choose(i) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = currentQ;
+  const correct = i === q.correct_index;
+  const buttons = quizOpts.querySelectorAll(".opt");
+  buttons.forEach((b, bi) => {
+    b.disabled = true;
+    if (bi === q.correct_index) b.classList.add("correct");
+    else if (bi === i) b.classList.add("wrong");
+  });
+
+  if (correct) {
+    streak++;
+    correctCount++;
+    const pts = TIER_INFO[q.difficulty].base + Math.min(streak, 10) * 25;
+    score += pts;
+    shields = Math.min(MAX_SHIELDS, shields + (q.difficulty === "devil" ? 2 : 1)); // a right answer restores a shield
+    quizFeedback.innerHTML =
+      `<b>CORRECT! +${pts}</b><br>${q.explanations[i] || ""}` +
+      (streak > 1 ? `<br><span style="color:#ffd166">Study streak ×${streak}!</span>` : "");
+    quizFeedback.className = "good";
+    chord([660, 990, 1320]);
+  } else {
+    streak = 0;
+    reviewQueue.push({ item: q, due: gatesPassed + 2 }); // spaced repetition: it returns 2 gates later
+    quizFeedback.innerHTML =
+      `<b>Not quite — you picked: ${q.options[i]}</b><br>` +
+      `✕ ${q.explanations[i] || ""}<br><br>` +
+      `<span style="color:#7dffb0">✔ ${q.options[q.correct_index]}:</span> ${q.explanations[q.correct_index] || ""}` +
+      `<br><span style="color:#8892b6">It will come back in 2 checkpoints.</span>`;
+    quizFeedback.className = "bad";
+    beep(140, 0.35, "sawtooth", 0.18);
+  }
+  quizNext.style.visibility = "visible";
+}
+
+function resumeFromQuiz() {
+  if (!quizAnswered) return;
+  quizEl.style.display = "none";
+  paused = false;
+  invuln = 2;         // grace period after the freeze
+  gatesPassed++;
+  gateCooldown = Math.max(4, 7 + Math.random() * 3 - speed * 0.03);
+}
+
+quizNext.addEventListener("click", resumeFromQuiz);
+
+// ------------------------------------------------------------
+// 6. GAME STATE & INPUT
+// ------------------------------------------------------------
+let running = false;
+let paused = false;
+let score = 0;
+let speed = 30;
+let spawnCooldown = 0;
+let crystalCooldown = 200;
+let gateCooldown = 6;
+let shields = 3;
+const MAX_SHIELDS = 5;
+let invuln = 0;
+let gatesPassed = 0;
+let correctCount = 0;
+let streak = 0;
+const keys = {};
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+
+  // While a question is open: digits 1-4 answer, ENTER resumes.
+  if (quizEl.style.display === "flex") {
+    if (!quizAnswered && ["Digit1", "Digit2", "Digit3", "Digit4"].includes(e.code)) {
+      const i = Number(e.code.slice(-1)) - 1;
+      if (currentQ && i < currentQ.options.length) choose(i);
+    } else if (e.code === "Enter") {
+      resumeFromQuiz();
+    }
+    return;
+  }
+
+  if (e.code === "Enter") startGame();
+});
+window.addEventListener("keyup", (e) => keys[e.code] = false);
+
+// --- Touch steering: drag anywhere on the 3D view, the ship eases
+// --- toward your finger (mapped from screen space to the corridor).
+let touchTarget = null; // { x, y } in screen pixels, while a finger is down
+
+function touchToTarget(x, y) {
+  touchTarget = { x, y };
+}
+const gameCanvas = renderer.domElement;
+gameCanvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  touchToTarget(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+gameCanvas.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  touchToTarget(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+gameCanvas.addEventListener("touchend", () => touchTarget = null);
+gameCanvas.addEventListener("touchcancel", () => touchTarget = null);
+
+// Detect once so the instructions can mention the right controls
+const isTouch = "ontouchstart" in window;
+
+const overlay = document.getElementById("overlay");
+const hud = document.getElementById("hud");
+overlay.addEventListener("click", startGame);
+
+function startGame() {
+  if (running || quizEl.style.display === "flex") return;
+  running = true;
+  paused = false;
+  score = 0;
+  speed = 30;
+  spawnCooldown = 0;
+  crystalCooldown = 150;
+  gateCooldown = 6;
+  shields = 3;
+  invuln = 1.5;           // small launch grace
+  gatesPassed = 0;
+  correctCount = 0;
+  streak = 0;
+  reviewQueue = [];
+  rebuildPools();
+  ship.position.set(0, 1.5, 0);
+  ship.rotation.set(0, 0, 0);
+  asteroids.forEach(a => { a.userData.active = false; a.visible = false; });
+  crystals.forEach(c => { c.userData.active = false; c.visible = false; });
+  gates.forEach(g => { g.userData.active = false; g.visible = false; });
+  overlay.style.display = "none";
+  beep(440, 0.15, "sawtooth");
+}
+
+function gameOver() {
+  running = false;
+  const best = Number(localStorage.getItem("astroStudyBest") || 0);
+  const newBest = score > best;
+  localStorage.setItem("astroStudyBest", Math.max(score, best));
+  const asked = gatesPassed;
+  const acc = asked ? Math.round(correctCount / asked * 100) : 0;
+  overlay.innerHTML = `
+    <h1>SHIELDS DOWN!</h1>
+    <p class="big">Score: ${score}</p>
+    <p>Checkpoints: ${asked} &nbsp;•&nbsp; Correct: ${correctCount} (${acc}%)</p>
+    ${newBest ? '<p style="color:#7df9ff">★ New personal best!</p>' : `<p>Best: ${Math.max(score, best)}</p>`}
+    <p class="big">${isTouch ? "Tap to fly again" : "Click or press ENTER to fly again"}</p>`;
+  overlay.style.display = "flex";
+  beep(90, 0.4, "sawtooth", 0.2);
+}
+
+// ------------------------------------------------------------
+// 7. THE UPDATE STEP
+// ------------------------------------------------------------
+const clock = new THREE.Clock();
+
+// Show the right control hints for the device we're actually running on
+if (isTouch) {
+  document.getElementById("howto").textContent = "Drag anywhere to steer • collect crystals 💎 (+50) • avoid rocks";
+  document.getElementById("launchHint").textContent = "Tap to launch";
+  quizNext.textContent = "Tap to continue";
+}
+
+function update(dt) {
+  if (!running || paused) return;
+
+  // --- Speed ramps up the longer you survive ---
+  speed = Math.min(speed + dt * 1.2, 80);
+  score += Math.round(speed * dt);
+
+  // --- Steering: keyboard, or drag when a finger is down ---
+  let tiltTarget = 0;
+  if (keys.ArrowLeft || keys.KeyA || keys.ArrowRight || keys.KeyD ||
+      keys.ArrowUp   || keys.KeyW || keys.ArrowDown  || keys.KeyS) {
+    if (keys.ArrowLeft  || keys.KeyA) ship.position.x -= 14 * dt;
+    if (keys.ArrowRight || keys.KeyD) ship.position.x += 14 * dt;
+    if (keys.ArrowUp    || keys.KeyW) ship.position.y += 10 * dt;
+    if (keys.ArrowDown  || keys.KeyS) ship.position.y -= 10 * dt;
+    tiltTarget = (keys.ArrowRight || keys.KeyD ? -0.5 : 0) + (keys.ArrowLeft || keys.KeyA ? 0.5 : 0);
+  } else if (touchTarget) {
+    // Map the finger's screen position into the flight corridor:
+    // screen edges ≈ corridor edges, screen top = fly high.
+    const tx = (touchTarget.x / innerWidth  - 0.5) * (LANES_W + 4);
+    const ty = (1 - touchTarget.y / innerHeight) * (LANES_H + 1.4) + 0.6;
+    const k = Math.min(1, dt * 9);  // ease factor: snappy but never teleporty
+    const dx = tx - ship.position.x;
+    ship.position.x += dx * k;
+    ship.position.y += (ty - ship.position.y) * k;
+    tiltTarget = dx > 0.8 ? -0.5 : dx < -0.8 ? 0.5 : 0; // lean into the turn
+  }
+
+  ship.position.x = Math.max(-LANES_W / 2, Math.min(LANES_W / 2, ship.position.x));
+  ship.position.y = Math.max(0.6,         Math.min(LANES_H + 2, ship.position.y));
+
+  ship.rotation.z += (tiltTarget - ship.rotation.z) * Math.min(1, dt * 8);
+
+  // --- Spawning ---
+  spawnCooldown -= dt;
+  if (spawnCooldown <= 0) {
+    spawnAsteroid();
+    spawnCooldown = Math.max(0.12, 0.5 - score / 4000);
+  }
+  crystalCooldown -= dt;
+  if (crystalCooldown <= 0) {
+    spawnCrystal();
+    crystalCooldown = 2 + Math.random() * 2;
+  }
+  gateCooldown -= dt;
+  if (gateCooldown <= 0) {
+    spawnGate(tierForGate(gatesPassed));
+    gateCooldown = 9999; // next gate scheduled on resume
+  }
+
+  // --- Move everything toward the ship ---
+  const move = speed * dt;
+  for (const a of asteroids) {
+    if (!a.userData.active) continue;
+    a.position.z += move;
+    a.rotation.x += a.userData.spin.x * dt;
+    a.rotation.y += a.userData.spin.y * dt;
+
+    if (invuln <= 0) { // shields absorb the crash
+      const crash = 1.0 + a.userData.radius * 0.9;
+      if (ship.position.distanceTo(a.position) < crash) {
+        shields--;
+        invuln = 2;
+        streak = 0;
+        beep(120, 0.3, "sawtooth", 0.2);
+        if (shields <= 0) { gameOver(); return; }
+      }
+    }
+
+    if (a.position.z > 15) { a.userData.active = false; a.visible = false; }
+  }
+
+  for (const c of crystals) {
+    if (!c.userData.active) continue;
+    c.position.z += move;
+    c.rotation.y += dt * 3;
+    if (ship.position.distanceTo(c.position) < 1.8) {
+      c.userData.active = false;
+      c.visible = false;
+      score += 50;
+      beep(1200, 0.15, "triangle", 0.15);
+    }
+    if (c.position.z > 15) { c.userData.active = false; c.visible = false; }
+  }
+
+  // --- Gates: when one reaches the ship, pop the quiz ---
+  for (const g of gates) {
+    if (!g.userData.active) continue;
+    g.position.z += move;
+    g.rotation.z += dt * 0.8;          // slow majestic spin
+    const pulse = 1 + Math.sin(clock.elapsedTime * 4) * 0.05;
+    g.scale.setScalar(pulse);
+
+    if (g.position.z > 0.5) {
+      g.userData.active = false;
+      g.visible = false;
+      askQuestion();
+      return;
+    }
+  }
+
+  // --- Invulnerability blink after a hit / quiz resume ---
+  if (invuln > 0) {
+    invuln -= dt;
+    ship.visible = Math.floor(clock.elapsedTime * 10) % 2 === 0;
+  } else {
+    ship.visible = true;
+  }
+
+  // --- Camera follows ---
+  camera.position.x += (ship.position.x * 0.5 - camera.position.x) * Math.min(1, dt * 4);
+  camera.position.y += (ship.position.y * 0.4 + 2.5 - camera.position.y) * Math.min(1, dt * 4);
+  engine.scale.setScalar(1 + Math.sin(clock.elapsedTime * 30) * 0.15);
+
+  hud.textContent =
+    `Score: ${score}   ${"◆".repeat(shields)}${"◇".repeat(MAX_SHIELDS - shields)}` +
+    (streak > 1 ? `   🔥${streak}` : "");
+}
+
+// ------------------------------------------------------------
+// 8. THE MAIN LOOP
+// ------------------------------------------------------------
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  update(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

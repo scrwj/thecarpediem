@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini Student Access — THE CARPE DIEM</title>
+<link rel="icon" type="image/webp" href="assets/cd-mark.webp">
+<meta property="og:title" content="Gemini Student Access — THE CARPE DIEM">
+<meta property="og:description" content="Request an in-person appointment to get help with Google's Ghana student AI offer. Independent student initiative.">
+<meta property="og:image" content="assets/cd-badge.webp">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .form-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:26px;max-width:760px;margin:0 auto}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .form-grid .full{grid-column:1/-1}
+  @media(max-width:640px){.form-grid{grid-template-columns:1fr}}
+  label.f{display:block;font-weight:700;font-size:13.5px;color:var(--navy);margin-bottom:6px}
+  label.f span{font-weight:400;color:var(--muted)}
+  input[type=text],input[type=tel],select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(13,42,86,.08)}
+  .yn{display:flex;gap:18px;padding-top:4px}
+  .yn label{display:flex;gap:7px;align-items:center;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .privacy{background:var(--navy-soft);border-radius:12px;padding:16px 18px;font-size:13px;color:var(--ink);margin:18px 0}
+  .privacy b{color:var(--navy)}
+  .msg{margin-top:16px;padding:14px 16px;border-radius:10px;font-size:14px;display:none}
+  .msg.ok{display:block;background:var(--green-soft);color:#14532d;border:1px solid #b7e4c7}
+  .msg.err{display:block;background:#fde8e8;color:#7f1d1d;border:1px solid #f5b5b5}
+  .msg.info{display:block;background:var(--yellow-soft);color:#6b4e05;border:1px solid #f2d98c}
+  .trial-banner{display:none;background:var(--yellow);color:#241a02;text-align:center;font-weight:700;font-size:13px;padding:8px 14px}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .step .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--navy);color:var(--yellow);font-weight:800;font-size:14px;margin-bottom:10px}
+  .step h3{font-size:15.5px;color:var(--navy);margin-bottom:4px}
+  .step p{font-size:13.5px;color:var(--muted)}
+  .slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:8px}
+  .slot-opt{border:1.5px solid var(--line);border-radius:10px;padding:9px 6px;text-align:center;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer;background:#fff}
+  .slot-opt input{display:none}
+  .slot-opt:has(input:checked){background:var(--navy);color:#fff;border-color:var(--navy)}
+  .slot-opt.off{opacity:.35;cursor:not-allowed;text-decoration:line-through}
+  .status-box{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:560px;margin:0 auto}
+  @media(max-width:560px){.status-box{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="trial-banner" id="trialBanner">Trial period — requests are being tested. Appointments are still confirmed manually by the facilitator.</div>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img class="mark" src="assets/cd-mark.webp" alt="The Carpe Diem — CD monogram"><span>THE CARPE DIEM<small>THE BEAUTY IN THE GNARLY</small></span></a>
+    <nav class="main"><a href="index.html">Home</a><a href="resources.html">Resources</a><a href="events.html">Events</a><a href="diagnosis.html">Diagnosis Engine</a><a href="about.html">About</a><a href="contact.html">Contact</a></nav>
+  </div>
+</header>
+
+<section class="hero" style="padding:42px 0">
+  <div class="wrap"><div class="hero-copy">
+    <h1 style="font-size:clamp(26px,4vw,38px)">Gemini Student Access — request an appointment</h1>
+    <div class="motto">INDEPENDENT STUDENT INITIATIVE</div>
+    <p>THE CARPE DIEM helps students navigate Google's Ghana student AI offer and arranges in-person assistance with the payment-method step. Anyone can request a slot — we do not turn anyone away for age. Google makes the final decision on the offer itself; we are not Google, KNUST or HESA.</p>
+  </div></div>
+</section>
+
+<section class="light" style="background:var(--card)">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>What this is</h2><p>The current Ghana offer is Google AI Plus for 12 months at no subscription charge during the promotional period, subject to Google's eligibility and terms. It automatically renews at <b>GHS 70/month</b> after the offer unless cancelled earlier. A qualifying payment method is required at sign-up.</p></div></div>
+    <div class="cards">
+      <div class="card" data-ownership="carpediem"><h3>Who can request help</h3><p>Any student — we don't restrict by age. You just need a personal Google account and a way to be on the call. Google decides final eligibility for the offer itself (it normally expects 18+, current enrolment, SheerID verification and a qualifying payment method), but under-18 students are welcome to request a slot and try. We'll help however Google allows.</p></div>
+      <div class="card" data-ownership="carpediem"><h3>What the GHS 5 is</h3><p>The GHS 5 is charged by <b>Google</b> as part of the sign-up — it is not a Carpe Diem fee and we do not collect it. Google advertises 12 months at no subscription charge during the promotional period; confirm the exact amount on Google's own checkout screen before you pay.</p></div>
+      <div class="card" data-ownership="carpediem"><h3>What we never ask for</h3><p>Never your Google password, verification code/OTP, Ghana Card number or photo, card number, CVV or bank details. You operate your own phone and account; the facilitator only assists with the payment step.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="light">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>How it works</h2><p>Submitting this form is a request — not a confirmed appointment.</p></div></div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Request</h3><p>Fill the form with your details and a preferred day and 30-minute window.</p></div>
+      <div class="step"><div class="n">2</div><h3>Review</h3><p>The facilitator checks hall density, travel and availability, then approves, proposes another time or declines.</p></div>
+      <div class="step"><div class="n">3</div><h3>Confirm</h3><p>You get a confirmation with the agreed window and meeting point. Nothing is confirmed before that.</p></div>
+      <div class="step"><div class="n">4</div><h3>Meet &amp; assist</h3><p>Bring your phone, account access, proof of enrolment as Google asks, and your Ghana Card for our check. Google's GHS 5 charge is handled on Google's side during sign-up.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="light" style="background:var(--card)">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>Request a slot</h2><p>Available days: Tuesday &amp; Thursday 7:00–10:00 PM, Saturday 10:00 AM–10:00 PM (Ghana time). Each window is 30 minutes.</p></div></div>
+
+    <form class="form-card" id="regForm" autocomplete="off">
+      <div class="form-grid">
+        <div class="full">
+          <label class="f" for="full_name">Full name</label>
+          <input type="text" id="full_name" required maxlength="120" placeholder="As it appears on your student records">
+        </div>
+        <div>
+          <label class="f" for="nickname">Nickname <span>(optional — helps us tell people with the same name apart)</span></label>
+          <input type="text" id="nickname" maxlength="40" placeholder="e.g. Kofi, Ama, Nana">
+        </div>
+        <div>
+          <label class="f" for="phone">Phone number (WhatsApp)</label>
+          <input type="tel" id="phone" required placeholder="0244 123 456">
+        </div>
+        <div>
+          <label class="f" for="level">Academic level</label>
+          <select id="level" required></select>
+        </div>
+        <div>
+          <label class="f" for="programme">Programme / department</label>
+          <select id="programme" required></select>
+        </div>
+        <div>
+          <label class="f" for="hall">Hall of residence</label>
+          <select id="hall" required></select>
+        </div>
+        <div class="full">
+          <label class="f" for="room">Room number <span>(optional — leave blank if you prefer a public meeting point)</span></label>
+          <input type="text" id="room" maxlength="30" placeholder="e.g. B12">
+        </div>
+
+        <div class="full">
+          <label class="f">Before the appointment — do you have these ready?</label>
+          <div class="yn">
+            <label><input type="radio" name="gmail" value="yes" required> Personal Gmail / Google account access</label>
+            <label><input type="radio" name="gmail" value="no"> Not yet</label>
+          </div>
+        </div>
+        <div class="full">
+          <div class="yn">
+            <label><input type="radio" name="pdf" value="yes" required> Proof of admission/enrolment as a PDF</label>
+            <label><input type="radio" name="pdf" value="no"> Not yet</label>
+          </div>
+        </div>
+        <div class="full">
+          <div class="yn">
+            <label><input type="radio" name="ghanacard" value="yes" required> Ghana Card for the Carpe Diem check</label>
+            <label><input type="radio" name="ghanacard" value="no"> Not yet</label>
+          </div>
+        </div>
+        <div class="full">
+          <div class="yn">
+            <label><input type="radio" name="ghs5" value="yes" required> I know Google charges GHS 5 during sign-up</label>
+            <label><input type="radio" name="ghs5" value="no"> Not yet</label>
+          </div>
+        </div>
+        <div class="full">
+          <div class="yn">
+            <label><input type="radio" name="age18" value="yes" required> 18 or older</label>
+            <label><input type="radio" name="age18" value="no"> Under 18</label>
+          </div>
+          <div class="hint">Anyone can request a slot and apply — no age restriction here. Google decides final eligibility for the offer itself and normally expects 18+; under-18s are still welcome to book and try.</div>
+        </div>
+
+        <div>
+          <label class="f" for="date">Preferred day</label>
+          <select id="date" required><option value="">Loading…</option></select>
+        </div>
+        <div>
+          <label class="f">Preferred 30-minute window</label>
+          <div class="slot-grid" id="slotGrid"><span class="hint">Pick a day first.</span></div>
+        </div>
+
+        <div class="full">
+          <div class="privacy">
+            <b>Privacy notice.</b> We collect your name, phone number, programme, level, hall, optional room, your readiness answers and your requested slot — only to arrange and deliver this appointment. The facilitator and authorised helpers can access it. We keep it only as long as needed for the appointment and follow-up, then delete or anonymise it. We never collect passwords, OTPs, Ghana Card numbers/images, admission documents or card details. We do not publish individual booking records in any group. To ask for correction or deletion, contact the facilitator through the Carpe Diem WhatsApp.
+          </div>
+          <label class="yn" style="align-items:flex-start"><input type="checkbox" id="consent" required style="margin-top:4px"> <span style="font-weight:600;font-size:13.5px">I have read the privacy notice and consent to my details being used to arrange this appointment.</span></label>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <button class="btn gold" type="submit" id="submitBtn">Submit request</button>
+        <span class="hint" style="margin:0">You will get a booking reference. Your time is not confirmed until the facilitator approves it.</span>
+      </div>
+      <div class="msg" id="formMsg"></div>
+    </form>
+  </div>
+</section>
+
+<section class="light">
+  <div class="wrap">
+    <div id="myRequest" style="display:none;max-width:640px;margin:0 auto 26px;padding:18px 20px;border-radius:14px;border:2px solid #f5b400;background:#fffdf5">
+      <h3 style="margin:0 0 8px">Your request on this phone</h3>
+      <div id="myRequestBody" class="hint" style="font-size:15px"></div>
+      <button class="btn alt" id="forgetBtn" type="button" style="margin-top:12px;font-size:12px">Forget this request on this phone</button>
+    </div>
+    <div class="sec-head"><div><h2>Check your request</h2><p>On the same phone it shows automatically above. On a different phone, enter your booking reference and the phone number you used.</p></div></div>
+    <div class="status-box">
+      <input type="text" id="statusId" placeholder="CDG-XXXXXX-XXXX" style="padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit">
+      <input type="tel" id="statusPhone" placeholder="Phone number" style="padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit">
+      <button class="btn navy" id="statusBtn" type="button">Check</button>
+    </div>
+    <div class="msg" id="statusMsg" style="max-width:560px;margin:14px auto 0"></div>
+  </div>
+</section>
+
+<footer class="foot" style="background:var(--navy-deep);color:#c9d6ea;padding:34px 0;text-align:center;font-size:13px">
+  <div class="wrap">
+    <img class="foot-emblem" src="assets/cd-badge.webp" alt="THE CARPE DIEM badge">
+    <p><b style="color:#fff">THE CARPE DIEM</b> — independent, student-led for the HESA-KNUST community. Not an official Google, KNUST or HESA programme.</p>
+    <p style="margin-top:8px;opacity:.75">THE BEAUTY IN THE GNARLY · SEIZE THE SEMESTER</p>
+  </div>
+</footer>
+
+<script>
+const API = 'https://162.35.40.27.sslip.io';
+const $ = id => document.getElementById(id);
+let SLOTS = [];
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function api(path, opts) {
+  const r = await fetch(API + path, opts);
+  let j = null;
+  try { j = await r.json(); } catch (_) {}
+  if (!r.ok || !j || j.ok === false) throw new Error((j && j.error) || ('Request failed (' + r.status + ')'));
+  return j;
+}
+
+function show(el, kind, text) {
+  el.className = 'msg ' + kind;
+  el.textContent = text;
+  el.style.display = 'block';
+}
+
+async function loadConfig() {
+  try {
+    const { config } = await api('/api/config');
+    if (config.trialMode) $('trialBanner').style.display = 'block';
+    const fill = (id, arr, ph) => {
+      const sel = $(id);
+      sel.innerHTML = '<option value="">' + ph + '</option>' + arr.map(x => '<option value="' + esc(x) + '">' + esc(x) + '</option>').join('');
+    };
+    fill('programme', config.programmes, 'Select programme');
+    fill('level', config.levels, 'Select level');
+    fill('hall', config.halls, 'Select hall');
+  } catch (e) {
+    show($('formMsg'), 'err', 'Could not reach the booking service: ' + e.message);
+  }
+}
+
+async function loadDays() {
+  const sel = $('date');
+  try {
+    const { days } = await api('/api/upcoming?days=21');
+    if (!days.length) { sel.innerHTML = '<option value="">No open days right now</option>'; return; }
+    sel.innerHTML = '<option value="">Select a day</option>' + days.map(d => {
+      const label = d.day + ' ' + new Date(d.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) + ' — ' + d.openCount + ' windows';
+      return '<option value="' + d.date + '">' + esc(label) + '</option>';
+    }).join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">Could not load days</option>';
+  }
+}
+
+async function loadSlots(date) {
+  const grid = $('slotGrid');
+  if (!date) { grid.innerHTML = '<span class="hint">Pick a day first.</span>'; return; }
+  grid.innerHTML = '<span class="hint">Loading…</span>';
+  try {
+    const { slots } = await api('/api/slots?date=' + encodeURIComponent(date));
+    const open = slots.filter(s => s.available);
+    SLOTS = slots;
+    if (!open.length) { grid.innerHTML = '<span class="hint">No open windows on that day. Try another.</span>'; return; }
+    grid.innerHTML = slots.map(s =>
+      '<label class="slot-opt' + (s.available ? '' : ' off') + '">' +
+        '<input type="radio" name="slot" value="' + esc(s.start) + '"' + (s.available ? '' : ' disabled') + '>' +
+        esc(s.label) +
+      '</label>'
+    ).join('');
+  } catch (e) {
+    grid.innerHTML = '<span class="hint">Could not load windows: ' + esc(e.message) + '</span>';
+  }
+}
+
+function radioVal(name) {
+  const el = document.querySelector('input[name="' + name + '"]:checked');
+  return el ? el.value === 'yes' : null;
+}
+
+/* Remember the request on THIS phone so students never need the reference again. */
+const LS_KEY = 'cd_gemini_request';
+const STATUS_TEXT = {
+  PENDING_REVIEW: 'Pending review — waiting for the facilitator.',
+  REQUESTED: 'Received — pending review.',
+  CONFIRMED: 'Confirmed.',
+  RESCHEDULE_REQUESTED: 'A change was proposed — check back soon.',
+  COMPLETED: 'Completed.',
+  CANCELLED: 'Cancelled.',
+  NO_SHOW: 'Marked as no-show.',
+  REFERRED: 'Referred for follow-up.'
+};
+function statusLine(j) {
+  return (STATUS_TEXT[j.status] || j.status) + ' · ' + j.day + ' ' + j.date + ', ' + j.window +
+    (j.meeting ? ' · Meeting point: ' + j.meeting : '') + (j.note ? ' · ' + j.note : '');
+}
+function remember(b) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ id: b.id, phone: b.phone })); } catch (_) {}
+}
+async function showMyRequest(silent) {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (_) {}
+  if (!saved || !saved.id || !saved.phone) { $('myRequest').style.display = 'none'; return; }
+  try {
+    const j = await api('/api/status?id=' + encodeURIComponent(saved.id) + '&phone=' + encodeURIComponent(saved.phone));
+    $('myRequestBody').textContent = 'Reference ' + j.id + ' — ' + statusLine(j);
+    $('myRequest').style.display = 'block';
+  } catch (e) {
+    if (!silent) { $('myRequestBody').textContent = 'Could not refresh your request right now. Your reference is ' + saved.id + '.'; $('myRequest').style.display = 'block'; }
+  }
+}
+$('forgetBtn').addEventListener('click', () => {
+  try { localStorage.removeItem(LS_KEY); } catch (_) {}
+  $('myRequest').style.display = 'none';
+});
+
+$('date').addEventListener('change', e => loadSlots(e.target.value));
+
+$('regForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('submitBtn');
+  const msg = $('formMsg');
+  const slotEl = document.querySelector('input[name="slot"]:checked');
+
+  if (!slotEl) { show(msg, 'err', 'Please choose a 30-minute window.'); return; }
+  if (!$('consent').checked) { show(msg, 'err', 'Please accept the privacy notice.'); return; }
+  // Age is informational only - anyone may request a slot. Under-18s are welcome; Google decides final eligibility.
+
+  const payload = {
+    full_name: $('full_name').value.trim(),
+    nickname: $('nickname').value.trim(),
+    phone: $('phone').value.trim(),
+    programme: $('programme').value,
+    level: $('level').value,
+    hall: $('hall').value,
+    room: $('room').value.trim(),
+    gmail: radioVal('gmail'),
+    pdf: radioVal('pdf'),
+    ghanacard: radioVal('ghanacard'),
+    ghs5: radioVal('ghs5'),
+    age18: radioVal('age18'),
+    date: $('date').value,
+    slot: slotEl.value,
+    consent: true
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  try {
+    const j = await api('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    show(msg, 'ok', j.message + ' This phone will now show your request automatically — no need to write down the reference (' + j.id + ').');
+    remember({ id: j.id, phone: payload.phone });
+    await showMyRequest(true);
+    $('regForm').reset();
+    $('slotGrid').innerHTML = '<span class="hint">Pick a day first.</span>';
+    loadDays();
+    window.scrollTo({ top: msg.getBoundingClientRect().top + window.scrollY - 120, behavior: 'smooth' });
+  } catch (err) {
+    show(msg, 'err', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit request';
+  }
+});
+
+$('statusBtn').addEventListener('click', async () => {
+  const msg = $('statusMsg');
+  const id = $('statusId').value.trim();
+  const phone = $('statusPhone').value.trim();
+  if (!id || !phone) { show(msg, 'err', 'Enter both the reference and your phone number.'); return; }
+  try {
+    const j = await api('/api/status?id=' + encodeURIComponent(id) + '&phone=' + encodeURIComponent(phone));
+    show(msg, 'info', statusLine(j));
+  } catch (e) {
+    show(msg, 'err', e.message);
+  }
+});
+
+loadConfig();
+loadDays();
+showMyRequest(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Glycolysis Tower | THE CARPE DIEM GAMING EXPERIENCE</title>
+<style>
+:root{--bg:#070a1c;--card:#10163a;--card2:#1b2352;--txt:#eef2ff;--mut:#8f9ad6;--acc:#59c8ff;--good:#2fd38a;--bad:#ff5c7a;--gold:#ffc857}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100%}
+#wrap{max-width:600px;margin:0 auto;padding:0 10px 70px}
+#top{position:sticky;top:0;z-index:6;background:var(--bg);padding:8px 0 6px}
+.row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.pill{background:var(--card);padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--txt)}
+.xpbar{flex:1;height:8px;background:var(--card);border-radius:9px;overflow:hidden;min-width:20px}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--gold));transition:width .4s}
+#stage{position:relative;width:min(100%,calc(46vh*16/9));margin:0 auto}
+#cv{display:block;width:100%;aspect-ratio:16/9;image-rendering:crisp-edges;image-rendering:pixelated;border-radius:12px;border:2px solid #2b3570;background:#000}
+#banner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;text-align:center;padding:0 10px}
+#banner.on{animation:ban 1.8s ease both}
+#banner b{font:900 clamp(20px,7vw,38px)/1.05 ui-monospace,Menlo,monospace;letter-spacing:3px;text-transform:uppercase;color:#fff;text-shadow:0 0 14px var(--acc),3px 3px 0 #000}
+#banner span{font:700 clamp(11px,3.3vw,15px) ui-monospace,Menlo,monospace;color:var(--gold);text-shadow:2px 2px 0 #000;margin-top:8px}
+@keyframes ban{0%{opacity:0;transform:scale(1.35)}14%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes pop{0%{transform:scale(.94);opacity:0}100%{transform:none;opacity:1}}
+.pop{animation:pop .25s}
+#panel{margin-top:10px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:0 0 10px;box-shadow:0 6px 22px #0006}
+h1{font-size:26px;margin:6px 0}h2{font-size:20px;margin:6px 0 10px;line-height:1.3}
+p{line-height:1.5;color:#d6dbff}.mut{color:var(--mut);font-size:13px}
+.badge{display:inline-block;background:var(--card2);color:var(--acc);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+button{font:inherit;color:var(--txt);border:0;cursor:pointer}
+.btn{background:var(--acc);color:#04122a;padding:14px 18px;border-radius:14px;font-weight:800;width:100%;font-size:16px;margin-top:10px}
+.btn.ghost{background:var(--card2);color:var(--txt)}.btn:disabled{opacity:.4}
+.opt{display:block;width:100%;text-align:left;background:var(--card2);padding:13px;border-radius:13px;margin:8px 0;font-size:16px;line-height:1.35;border:2px solid transparent}
+.opt:active{transform:scale(.98)}
+.opt.good{border-color:var(--good);background:#12382c}.opt.bad{border-color:var(--bad);background:#40172a;animation:shake .35s}
+.opt.gone{opacity:.2;pointer-events:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{background:var(--card2);padding:10px 12px;border-radius:12px;font-size:15px;line-height:1.3;text-align:left}
+.chip.used{opacity:.25;pointer-events:none}
+.slot{display:flex;gap:8px;align-items:flex-start;background:#0003;border:2px dashed #3a4380;border-radius:12px;padding:9px;margin:6px 0;min-height:42px;font-size:15px}
+.slot.filled{border-style:solid;border-color:var(--acc);background:var(--card2);cursor:pointer}
+.slot.good{border-color:var(--good);background:#12382c}.slot.bad{border-color:var(--bad);background:#40172a}
+.slot b{color:var(--acc);min-width:20px}
+.sortcard{font-size:20px;font-weight:700;text-align:center;padding:22px 12px;background:var(--card2);border-radius:16px;margin:10px 0;line-height:1.35}
+.cats{display:grid;gap:10px}.cats.c3,.cats.c4{grid-template-columns:1fr 1fr}
+.cat{background:var(--card2);border-radius:14px;padding:15px 10px;font-weight:700;font-size:15px;border:2px solid transparent}
+.cat.good{border-color:var(--good);background:#12382c}.cat.bad{border-color:var(--bad);background:#40172a}
+.dlg b{color:var(--acc);font-size:13px;letter-spacing:1.2px;text-transform:uppercase}
+.dlg p{font-size:17px;line-height:1.5;min-height:3.4em;margin:8px 0;color:var(--txt)}
+.fb{border-left:4px solid var(--good);background:var(--card2);border-radius:12px;padding:12px;margin-top:10px;font-size:15px;line-height:1.5;animation:pop .25s}
+.fb.bad{border-color:var(--bad)}.fb b{display:block;margin-bottom:4px}
+.mini{background:var(--card2);padding:7px 11px;border-radius:10px;font-size:13px;font-weight:600;margin:8px 6px 0 0}
+#modal{position:fixed;inset:0;background:#000b;z-index:20;display:none;align-items:center;justify-content:center;padding:16px}
+#modal.show{display:flex}#modal .box{background:var(--card);border-radius:18px;padding:18px;max-width:560px;width:100%;max-height:82vh;overflow:auto}
+#modal img{max-width:100%;border-radius:10px;margin:8px 0}#modal pre{white-space:pre-wrap;font:inherit;line-height:1.5;color:#d6dbff}
+.stars{font-size:38px;text-align:center;letter-spacing:6px}
+.lv{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin:8px 0 2px}
+.bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--good))}
+.entry{border-left:4px solid var(--acc);background:var(--card2);padding:10px 12px;border-radius:10px;margin:8px 0;font-size:14px;line-height:1.4}
+.entry.weak{border-color:var(--bad)}
+.dots{display:flex;gap:6px;justify-content:center;margin:10px 0}.dots i{width:12px;height:12px;border-radius:3px;background:var(--card2)}.dots i.d{background:var(--good)}.dots i.c{background:var(--gold)}
+.scroll{position:relative;background:linear-gradient(#ecdcaa,#dcc88c);color:#3b2a14;border:3px double #8a6a2b;border-radius:8px;padding:16px;margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;box-shadow:0 8px 24px #000a}
+.scroll .sc-h{font-size:11px;letter-spacing:2px;font-weight:700;color:#8a3b1f}
+.scroll h2{color:#3b2a14;margin:6px 0 10px}
+.sc-r{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed #8a6a2b88;padding:6px 0;font-size:14px}.sc-r span{color:#6b5530}
+.scroll .btn{background:#5a3d26;color:#f4e3b0;margin-top:14px}
+.stamp{position:absolute;right:12px;top:30px;border:3px solid #b3202e;color:#b3202e;font-weight:900;letter-spacing:3px;padding:4px 10px;border-radius:4px;opacity:0;transform:rotate(-12deg) scale(2.2);pointer-events:none;font-family:ui-monospace,monospace}
+.stamp.on{animation:stamp .35s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes stamp{to{opacity:.92;transform:rotate(-12deg) scale(1)}}
+.gcard{background:linear-gradient(135deg,#232a52,#10163a);border:3px solid #ffc857;border-radius:14px;padding:18px;margin:0 0 10px;text-align:center;box-shadow:0 0 30px #ffc85755}
+.gcard .tt{letter-spacing:3px;font-size:12px;color:var(--gold);font-weight:800}
+.gcard .gl{display:grid;place-items:center;font:900 92px/1 ui-monospace,Menlo,monospace;margin:8px 0;height:96px}
+.gcard .gl span{grid-area:1/1;text-shadow:0 0 22px currentColor}
+.gcard .old{animation:oldr 1s .2s forwards}
+.gcard .new{opacity:0;animation:newr .7s 1.2s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes oldr{to{opacity:0;transform:translateY(-30px) scale(.6)}}
+@keyframes newr{from{opacity:0;transform:scale(2.6)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <div class="row" id="hud"></div>
+    <div id="stage"><canvas id="cv"></canvas><div id="banner"></div></div>
+  </div>
+  <div id="panel"></div>
+</div>
+<div id="modal"><div class="box"></div></div>
+<script>
+const SPEC = {"title": "Glycolysis Tower", "story": "You have logged into the Tower, where every floor is guarded by monsters that only fall to real knowledge. Climb all floors and defeat the Warden.", "theme": {"accent": "#6c8cff"}, "slides": [{"n": 1, "title": "Glycolysis overview", "text": "Glycolysis occurs in the cytosol.\nIt converts one glucose (6 carbons) into two pyruvate (3 carbons).\nNet yield: 2 ATP (4 produced, 2 consumed in the investment phase) and 2 NADH per glucose.\nUnder anaerobic conditions pyruvate is reduced to lactate by lactate dehydrogenase (LDH), regenerating NAD+."}, {"n": 2, "title": "Key steps of glycolysis", "text": "1. Glucose is phosphorylated to glucose-6-phosphate by hexokinase\n2. Glucose-6-phosphate is isomerized to fructose-6-phosphate\n3. Fructose-6-phosphate is phosphorylated to fructose-1,6-bisphosphate by phosphofructokinase-1\n4. Aldolase splits fructose-1,6-bisphosphate into two triose phosphates\n5. Glyceraldehyde-3-phosphate is oxidized to 1,3-bisphosphoglycerate, producing NADH\n6. 1,3-bisphosphoglycerate transfers a phosphate to ADP, forming ATP and 3-phosphoglycerate\n7. Phosphoenolpyruvate transfers a phosphate to ADP, forming pyruvate and ATP"}, {"n": 3, "title": "Enzyme classes", "text": "Oxidoreductases: catalyze oxidation-reduction reactions (e.g. lactate dehydrogenase)\nTransferases: transfer a functional group between molecules (e.g. hexokinase)\nHydrolases: cleave bonds using water (e.g. lipase)\nLyases: cleave bonds without water or oxidation (e.g. aldolase)"}, {"n": 4, "title": "Regulation of glycolysis", "text": "Phosphofructokinase-1 (PFK-1) is the main rate-limiting enzyme of glycolysis.\nPFK-1 is inhibited by ATP and citrate, and activated by AMP and fructose-2,6-bisphosphate.\nHexokinase is inhibited by its own product, glucose-6-phosphate.\nPyruvate kinase is activated by fructose-1,6-bisphosphate (feed-forward activation)."}, {"n": 5, "title": "Glucose in the lab", "text": "Red blood cells keep carrying out glycolysis in a collected sample, so glucose in unseparated blood falls by about 5-7% per hour.\nFluoride oxalate tubes (grey top) inhibit glycolysis, so glucose is preserved for measurement.\nSeparate plasma from cells promptly if the sample is not in a preservative tube."}], "levels": [{"title": "Glycolysis Basics", "intro": "Warm-up. Learn where glycolysis happens and what it gives you.", "game": "quiz", "items": [{"q": "Where in the cell does glycolysis occur?", "options": ["Cytosol", "Mitochondrial matrix", "Nucleus", "Lysosome"], "answer": 0, "explain": "Glycolysis occurs in the cytosol, so it doesn't need mitochondria.", "slide": 1}, {"q": "What is the NET ATP yield of glycolysis per glucose?", "options": ["4", "2", "6", "36"], "answer": 1, "explain": "4 ATP are produced but 2 are consumed in the investment phase, so the net is 2 ATP (plus 2 NADH).", "slide": 1}, {"q": "Under anaerobic conditions, pyruvate is reduced to what?", "options": ["Acetyl-CoA", "Lactate", "Oxaloacetate", "Citrate"], "answer": 1, "explain": "Lactate dehydrogenase reduces pyruvate to lactate, regenerating NAD+ so glycolysis can continue.", "slide": 1}], "enemy": "Sugar Slime", "monster": "slime", "quest": "The lobby gate is sealed by a slime that feeds on sugar. Answer correctly to cut it down."}, {"title": "Build the Pathway", "intro": "Put the key steps of glycolysis in the right order.", "game": "order", "items": [{"prompt": "Put the key steps of glycolysis in order", "steps": ["Hexokinase: glucose → glucose-6-phosphate", "Glucose-6-phosphate → fructose-6-phosphate", "PFK-1: fructose-6-phosphate → fructose-1,6-bisphosphate", "Aldolase splits it into two triose phosphates", "G3P oxidized to 1,3-BPG, producing NADH", "1,3-BPG → 3-phosphoglycerate, forming ATP", "PEP → pyruvate, forming ATP"], "explain": "Glucose is phosphorylated and committed (steps 1-3), split (4), then the payoff phase makes NADH and ATP (5-7).", "slide": 2}], "enemy": "Scramble Wraith", "monster": "wraith", "quest": "A wraith has scrambled the runes on the staircase. Put the pathway back in order to unleash a sword skill."}, {"title": "Enzyme Class Sort", "intro": "Sort each enzyme or description into its class. Go fast!", "game": "sort", "prompt": "Which enzyme class is this?", "categories": ["Oxidoreductase", "Transferase", "Hydrolase", "Lyase"], "items": [{"text": "Lactate dehydrogenase", "category": 0, "explain": "LDH catalyzes an oxidation-reduction reaction (pyruvate ↔ lactate).", "slide": 3}, {"text": "Hexokinase", "category": 1, "explain": "Hexokinase transfers a phosphate group to glucose.", "slide": 3}, {"text": "Lipase", "category": 2, "explain": "Lipase cleaves bonds using water, which makes it a hydrolase.", "slide": 3}, {"text": "Aldolase", "category": 3, "explain": "Aldolase cleaves a bond without water or oxidation, which makes it a lyase.", "slide": 3}, {"text": "Catalyzes oxidation-reduction reactions", "category": 0, "explain": "That's the definition of an oxidoreductase.", "slide": 3}, {"text": "Transfers a functional group between molecules", "category": 1, "explain": "That's the definition of a transferase.", "slide": 3}, {"text": "Cleaves bonds using water", "category": 2, "explain": "That's the definition of a hydrolase.", "slide": 3}, {"text": "Cleaves bonds without water or oxidation", "category": 3, "explain": "That's the definition of a lyase.", "slide": 3}], "enemy": "Enzyme Golem", "monster": "golem", "quest": "A golem built from enzyme shards stomps the hall. Sort each piece into its class to break it apart."}, {"title": "Control & the Lab", "intro": "How glycolysis is regulated, and why it matters when you handle blood samples.", "game": "quiz", "items": [{"q": "Which enzyme is the main rate-limiting step of glycolysis?", "options": ["Hexokinase", "Pyruvate kinase", "Phosphofructokinase-1", "Aldolase"], "answer": 2, "explain": "PFK-1 is the main rate-limiting enzyme, so it's the key control point.", "slide": 4}, {"q": "Which molecule inhibits PFK-1?", "options": ["AMP", "Fructose-2,6-bisphosphate", "ATP", "Fructose-1,6-bisphosphate"], "answer": 2, "explain": "High ATP means the cell has energy, so it inhibits PFK-1 (as does citrate). AMP and fructose-2,6-bisphosphate activate it.", "slide": 4}, {"q": "Hexokinase is inhibited by which molecule?", "options": ["Pyruvate", "Glucose-6-phosphate", "Lactate", "NAD+"], "answer": 1, "explain": "Hexokinase is inhibited by its own product, glucose-6-phosphate.", "slide": 4}, {"q": "An unseparated blood sample sits for hours and its glucose reads low. Why?", "options": ["Red cells keep doing glycolysis and consume glucose", "Glucose binds to albumin", "Plasma proteins precipitate", "Bilirubin degrades glucose"], "answer": 0, "explain": "Cells in the sample continue glycolysis, so glucose falls by about 5-7% per hour.", "slide": 5}, {"q": "Which tube additive preserves glucose by inhibiting glycolysis?", "options": ["EDTA", "Heparin", "Sodium citrate", "Fluoride oxalate"], "answer": 3, "explain": "Fluoride oxalate (grey top) inhibits glycolysis so glucose is preserved for measurement.", "slide": 5}], "enemy": "Regulator Bat", "monster": "bat", "quest": "Bats swarm the control room, flipping switches. Learn what controls the pathway and what protects a blood sample."}], "npc": "Grandmaster Orlic", "bossName": "Warden of the Pathway", "bossQuest": "The Warden wakes. It feeds on every mistake you made on the way up. Three hits and you fall. Show it everything you learned."};
+(function(){
+const S = SPEC, $ = s => document.querySelector(s);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const PRESSURE = S.pressure !== false;   // set "pressure": false in the spec to stop idle enemy attacks
+const TS = /fast/.test(location.hash) ? 0.02 : 1;           // #fast = test mode
+const wait = ms => new Promise(r => setTimeout(r, Math.max(1, ms * TS)));
+const easeOut = p => 1 - (1 - p) * (1 - p), easeIn = p => p * p, lin = p => p;
+
+/* ================= levels ================= */
+const MON = ['slime', 'bat', 'wolf', 'golem', 'wraith'];
+const LV = S.levels.map((l, i) => Object.assign({}, l, { monster: MON.concat(['goblin', 'bandit']).includes(l.monster) ? l.monster : MON[i % MON.length] }));
+const allQuiz = S.levels.filter(l => l.game === 'quiz').flatMap(l => l.items.map(i => Object.assign({}, i, { _lvl: l.title })));
+if (S.boss !== false && allQuiz.length >= 3) LV.push({ game: 'boss', title: S.bossName || 'Floor Guardian', quest: S.bossQuest || 'The Floor Guardian wakes. Everything you learned on the way up will be tested. Three hits and you fall. Make them count.', monster: 'dragon', enemy: S.bossName || 'Floor Guardian', items: allQuiz });
+const PARTY = {
+  mira: { name: 'Mira', role: 'Archer', icon: '🏹', coat: '#1f7a6b', trim: '#7dffd9', hair: '#ff9d4a', skin: '#f3cfae', perk: 'Fires arrows with you. Extra XP on a streak of 2+.', cheer: ["You've got this!", 'Trust yourself!', 'I believe in you!'] },
+  brock: { name: 'Brock', role: 'Knight', icon: '🛡', coat: '#56658a', trim: '#c9a227', hair: '#3a2a20', skin: '#e0b08a', perk: 'Blocks the first hit you take on every floor.', cheer: ["Don't freeze up!", 'Stop overthinking it.', 'Pick one. Commit.'] },
+  lyra: { name: 'Lyra', role: 'Healer', icon: '✨', coat: '#efe7ff', trim: '#b58cff', hair: '#ffb3e6', skin: '#f6d6c0', perk: 'Heals you 1 heart on every 3rd correct answer in a row.', cheer: ['Breathe... you can do it.', "I'm right behind you.", "It's okay. Take your time."] }
+};
+PARTY.mira.fall = ['I... I can\'t feel my arm...', 'Go... I\'ll cover you from here.'];
+PARTY.brock.fall = ['Tch... my legs...', 'Go on. I\'ll only slow you down.'];
+PARTY.lyra.fall = ['I used... too much power...', 'Please... finish this.'];
+const FINAL = { mira: "We did it! I knew you'd make it!", brock: "Hmph. ...Good work. Don't let it go to your head.", lyra: "I'm so proud of you. Everyone made it back." };
+const hasA = id => allies.some(a => a.id === id && !a.down);
+const SCEN = [
+  { ally: 'mira', kind: 'rope', monster: 'goblin', enemy: 'Goblin Raiders',
+    pre: () => [['???', 'H-help! Somebody, please help me!'], ['Goblin', "Gehehe! Nobody's coming, girl. Hand over that bow and everything you carry!"], ['You', 'Let her go. Now.', 'x'], ['Goblin', 'Ha! Get him, boys!']],
+    post: () => [['Mira', 'You... you actually saved me. I thought I was done for.'], ['Mira', "I'm Mira. Archer. I climbed the Tower alone, and that was a mistake."], ['You', "Then don't climb alone. Come with us."], ['Mira', 'R-really? ...Okay! Then my bow is yours!', 'x']] },
+  { ally: 'brock', kind: 'rival', monster: 'bandit', enemy: 'Bandit Captain',
+    pre: () => [['Bandit Captain', 'This stairway belongs to us now. Pay the toll, or bleed.'], ['???', 'Tch. Bandits on the stairs again. Stay out of my way, kid.'], ['You', "There are too many of them. Let's fight together."], ['Brock', "Hmph. Fine. Don't slow me down.", 'x']],
+    post: () => [['Brock', '...Not bad. For a rookie.'], ['You', 'We climb faster as a team. Join us.'], ['Brock', "Don't get the wrong idea. I'm only coming so you don't get yourself killed."], ...(hasA('mira') ? [['Mira', 'Aww. He likes you!']] : []), ['Brock', 'Quiet, archer!', 'x']] },
+  { ally: 'lyra', kind: 'cage', monster: 'goblin', enemy: 'Goblin Chief',
+    pre: () => [['???', 'Please, be careful! There are too many of them!'], ['Goblin Chief', 'Quiet, healer! The boss pays good gold for you. Gehehe!'], ['You', 'Let her out. Right now.', 'x'], ...(hasA('mira') ? [['Mira', "We've got your back!"]] : []), ...(hasA('brock') ? [['Brock', "Tch. Let's make this quick."]] : [])],
+    post: () => [['Lyra', 'Thank you... I can heal wounds, but I cannot fight. I would only slow you down.'], ['You', "You're one of us now."], ['Lyra', "...Okay! I'll do everything I can!", 'x'], ...(hasA('mira') ? [['Mira', 'Yay! Our party is complete!']] : [])] }
+];
+{ const m = LV.filter(l => l.game !== 'boss').length, k = Math.min(3, Math.max(0, m - 1));
+  for (let j = 0; j < k; j++) { const idx = k === 1 ? 1 : 1 + Math.round(j * (m - 2) / (k - 1)); LV[idx].story = SCEN[j]; LV[idx].monster = SCEN[j].monster; LV[idx].enemy = SCEN[j].enemy; } }
+const GAMELABEL = { quiz: 'Strike', order: 'Sword skill', sort: 'Weak point', boss: 'Boss' };
+
+/* ================= state ================= */
+const fresh = () => ({ xp: 0, streak: 0, lvl: 0, stats: [], missed: {}, codex: {}, fifty: 2, rank: 0, party: [], down: null, muted: G ? G.muted : false });
+let G = null; G = fresh();
+const KEY = 'slidequest-rpg:' + S.title;
+try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) G = Object.assign(G, s); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) {} };
+const GRANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+const RTITLE = { F: 'Novice', E: 'Apprentice', D: 'Adventurer', C: 'Veteran', B: 'Elite', A: 'Champion', S: 'Legend' };
+const RCOL = { F: '#9aa4c8', E: '#5fd38a', D: '#59c8ff', C: '#b58cff', B: '#ffc857', A: '#ff6b6b', S: '#ff6bd6' };
+const heroLv = () => 1 + Math.floor(G.xp / 150);
+const rank = () => GRANKS[G.rank || 0];
+const rankName = () => RTITLE[rank()];
+const overallAcc = () => { const st = G.stats.filter(Boolean), R = st.reduce((a, x) => a + x.right, 0), Wr = st.reduce((a, x) => a + x.wrong, 0); return Math.round(100 * R / Math.max(1, R + Wr)); };
+const passedN = () => G.stats.filter(x => x && x.right / (x.right + x.wrong) >= .7).length;   // a floor only counts toward promotion at 70%+ accuracy
+const targetRank = () => { const k = G.stats.filter(Boolean).length, n = LV.length; return k >= n ? (overallAcc() >= 85 ? 6 : 5) : Math.min(5, Math.floor(passedN() / n * 6)); };
+const rivalIdx = () => Math.min(5, (G.rank || 0) + 1);
+
+/* ================= sound ================= */
+let AC;
+function ac() { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); return AC; }
+function beep(f, d = .12, t = 'sine', v = .07) { if (G.muted || TS < 1) return; try { const A = ac(), o = A.createOscillator(), g = A.createGain(); o.type = t; o.frequency.value = f; g.gain.value = v; o.connect(g); g.connect(A.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0001, A.currentTime + d); o.stop(A.currentTime + d); } catch (e) {} }
+function noise(d = .1, v = .08) { if (G.muted || TS < 1) return; try { const A = ac(), n = A.sampleRate * d | 0, b = A.createBuffer(1, n, A.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * (1 - i / n); const s = A.createBufferSource(), g = A.createGain(); g.gain.value = v; s.buffer = b; s.connect(g); g.connect(A.destination); s.start(); } catch (e) {} }
+const sfx = {
+  slash() { noise(.12, .1); beep(900, .08, 'square', .03); },
+  hit() { beep(120, .15, 'sawtooth', .08); noise(.08, .1); },
+  ok() { beep(660); setTimeout(() => beep(880), 90); },
+  no() { beep(170, .25, 'sawtooth'); },
+  stamp() { noise(.06, .2); beep(90, .12, 'square', .1); },
+  lvl() { [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => beep(f, .16, 'triangle'), i * 90)); },
+  win() { [392, 523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, .2, 'triangle'), i * 120)); }
+};
+
+/* ================= canvas engine ================= */
+const cv = $('#cv'), cx = cv.getContext('2d'), W = 320, H = 180, GY = 140, HEROX = 92;
+cv.width = W; cv.height = H;
+const scene = { theme: 0, scroll: 0, speed: 0, tower: false, guild: false, noteTaken: false };
+const hero = { x: HEROX, ox: 0, y: GY, hop: 0, state: 'idle', sword: -.6, flash: 0, hp: 4, max: 4, shown: 4, dead: 0 };
+let mon = null, shake = 0, flashA = 0, flashC = '#fff', inFight = false, titleText = null, tension = 0, beatPulse = 0, bubble = null;
+const fx = { fade: 0 }, anx = { on: false, t0: 0, nextThought: 0, nextBeat: 0, nextGrowl: 0, nextAtk: 0, chargeFrom: 0, atkN: 0 }, master = { talk: false };
+const THOUGHTS = {
+  low: ['Hmm...', 'Okay. Think.', 'Slow breaths...', 'Read it again.'],
+  mid: ['Was it on the slides?', "Don't rush...", 'I know this one...', 'Which one though...'],
+  high: ["It's getting closer!", 'Think! Think!', 'Please be right...', 'My hands are shaking...'],
+  hurt: ["One more hit and I'm done.", "I can't mess this up.", 'Stay calm...'],
+  boss: ['That thing is huge...', 'Everyone is counting on me.']
+};
+const TAUNT = { slime: 'blub...', bat: 'SKREEE', wolf: 'GRRRR...', golem: 'RUMBLE...', wraith: 'whisper...', dragon: 'ROOOAAR' };
+const parts = [], texts = [], slashes = [], tweens = [], arrows = [], orbs = [], allies = [];
+let guest = null, linesT = 0, guestCry = 0, blockUsed = false, atkP = null;
+
+function tween(o, props, ms, ease = lin) {
+  return new Promise(res => {
+    const from = {}; for (const k in props) from[k] = o[k];
+    tweens.push({ o, props, from, t0: performance.now(), d: Math.max(ms * TS, 1), ease, res });
+  });
+}
+function stepTweens(now) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const t = tweens[i], p = Math.min(1, (now - t.t0) / t.d), e = t.ease(p);
+    for (const k in t.props) t.o[k] = t.from[k] + (t.props[k] - t.from[k]) * e;
+    if (p >= 1) { tweens.splice(i, 1); t.res(); }
+  }
+}
+
+/* ---------- worlds ---------- */
+const THEMES = [
+  { sky: ['#4aa3ff', '#bfe6ff'], sun: '#fff2a8', far: '#78c796', mid: '#46a56b', ground: '#2e7d4f', gtop: '#5cc97e', prop: 'tree', mote: '#fff8b0' },
+  { sky: ['#12302a', '#4b8f6c'], sun: '#dfffe9', far: '#2c5c46', mid: '#1f4a38', ground: '#17382b', gtop: '#2e6b4f', prop: 'pine', stars: 1, mote: '#b6ff8a' },
+  { sky: ['#140d2b', '#34205f'], sun: '#cdb8ff', far: '#3a2870', mid: '#2a1d55', ground: '#1a1238', gtop: '#5a3fa0', prop: 'crystal', stars: 1, mote: '#d6b8ff' },
+  { sky: ['#7fd0ff', '#eaf9ff'], sun: '#ffffff', far: '#b3e0f5', mid: '#82c8ec', ground: '#a4d6ef', gtop: '#eafcff', prop: 'spike', mote: '#ffffff' },
+  { sky: ['#ff9d4a', '#ffe3a8'], sun: '#fff3c4', far: '#e3a95f', mid: '#cb8843', ground: '#b8742f', gtop: '#e8b96f', prop: 'cactus', mote: '#ffe0a0' },
+  { sky: ['#2a0f1f', '#6e2742'], sun: '#ffb0b0', far: '#4a2638', mid: '#37202f', ground: '#241420', gtop: '#5a3a4c', prop: 'pillar', stars: 1, mote: '#ff9d4a' },
+  { sky: ['#05040f', '#1d103e'], sun: '#e6dcff', far: '#2a1b5c', mid: '#1d1445', ground: '#0f0a26', gtop: '#4b35a8', prop: 'shard', stars: 1, mote: '#9d85ff' }
+];
+function hills(col, sp, base, amp) { cx.fillStyle = col; const o = scene.scroll * sp; for (let x = 0; x < W; x += 2) { const y = base - amp * Math.sin((x + o) / 38) - amp * .4 * Math.sin((x + o) / 15); cx.fillRect(x, y, 2, GY - y); } }
+function drawProps(th, t) {
+  const gap = 64, o = scene.scroll * .8;
+  for (let i = -1; i < W / gap + 2; i++) {
+    const idx = Math.floor(o / gap) + i, v = ((idx * 37) % 5 + 5) % 5, x = i * gap - (o % gap) + v * 6;
+    switch (th.prop) {
+      case 'tree': cx.fillStyle = '#6b4423'; cx.fillRect(x - 2, GY - 18 - v * 2, 4, 18 + v * 2); cx.fillStyle = '#2f8a4f'; cx.fillRect(x - 10, GY - 34 - v * 2, 20, 14); cx.fillRect(x - 6, GY - 41 - v * 2, 12, 8); cx.fillStyle = '#4fb36b'; cx.fillRect(x - 8, GY - 33 - v * 2, 6, 3); break;
+      case 'pine': cx.fillStyle = '#0c2219'; cx.fillRect(x - 1, GY - 10, 3, 10); for (let k = 0; k < 4; k++) { const w = 6 + k * 6; cx.fillRect(x - w / 2, GY - 40 - v * 2 + k * 8, w, 9); } break;
+      case 'crystal': cx.fillStyle = '#9b6bff'; cx.beginPath(); cx.moveTo(x - 6, GY); cx.lineTo(x - 1, GY - 28 - v * 4); cx.lineTo(x + 5, GY); cx.fill(); cx.fillStyle = '#d6b8ff'; cx.beginPath(); cx.moveTo(x + 4, GY); cx.lineTo(x + 9, GY - 16 - v * 2); cx.lineTo(x + 13, GY); cx.fill(); break;
+      case 'spike': cx.fillStyle = '#d9f6ff'; cx.beginPath(); cx.moveTo(x - 7, GY); cx.lineTo(x - 2, GY - 24 - v * 4); cx.lineTo(x + 5, GY); cx.fill(); cx.fillStyle = '#9fe0ff'; cx.beginPath(); cx.moveTo(x + 3, GY); cx.lineTo(x + 8, GY - 14); cx.lineTo(x + 13, GY); cx.fill(); break;
+      case 'cactus': cx.fillStyle = '#3f8f4a'; cx.fillRect(x - 3, GY - 26 - v * 2, 6, 26 + v * 2); cx.fillRect(x - 10, GY - 18, 7, 3); cx.fillRect(x - 10, GY - 22, 3, 7); cx.fillRect(x + 3, GY - 14, 7, 3); cx.fillRect(x + 7, GY - 19, 3, 8); break;
+      case 'pillar': cx.fillStyle = '#5a3a4c'; cx.fillRect(x - 6, GY - 42, 12, 42); cx.fillStyle = '#7a5468'; cx.fillRect(x - 8, GY - 44, 16, 4); cx.fillStyle = '#ffb347'; if (Math.sin(t / 300 + idx) > 0) cx.fillRect(x - 1, GY - 30, 2, 5); break;
+      case 'shard': { const y = GY - 52 - v * 6 + Math.sin(t / 500 + idx) * 4; cx.fillStyle = '#7b5cff'; cx.beginPath(); cx.moveTo(x, y - 9); cx.lineTo(x + 5, y); cx.lineTo(x, y + 9); cx.lineTo(x - 5, y); cx.fill(); cx.fillStyle = '#c9b8ff'; cx.fillRect(x - 1, y - 4, 2, 6); } break;
+    }
+  }
+}
+function drawBG(t) {
+  const th = THEMES[scene.theme % THEMES.length], sc = scene.scroll;
+  const g = cx.createLinearGradient(0, 0, 0, GY); g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  if (th.stars) { cx.fillStyle = '#fff'; for (let i = 0; i < 46; i++) { const x = (((i * 97) % W - sc * .05) % W + W) % W, y = (i * 53) % 100; if (Math.sin(t / 400 + i) > -.3) cx.fillRect(x, y, i % 5 ? 1 : 2, i % 5 ? 1 : 2); } }
+  else { cx.fillStyle = '#ffffff66'; for (let i = 0; i < 3; i++) { const x = (((i * 130 - t * .008 - sc * .1) % (W + 80)) + W + 80) % (W + 80) - 40, y = 22 + i * 18; cx.fillRect(x, y, 34, 6); cx.fillRect(x + 6, y - 4, 20, 5); } }
+  cx.fillStyle = th.sun; cx.beginPath(); cx.arc(262, 34, th.stars ? 10 : 14, 0, 6.283); cx.fill();
+  if (scene.tower) {
+    cx.fillStyle = '#1c2457'; cx.beginPath(); cx.moveTo(214, GY); cx.lineTo(228, 22); cx.lineTo(252, 22); cx.lineTo(266, GY); cx.fill();
+    cx.beginPath(); cx.moveTo(228, 22); cx.lineTo(240, -8); cx.lineTo(252, 22); cx.fill();
+    for (let k = 0; k < 7; k++) { cx.fillStyle = Math.sin(t / 500 + k * 2) > -.4 ? '#ffd86b' : '#5a5f9a'; cx.fillRect(236, 34 + k * 15, 4, 6); cx.fillRect(244, 40 + k * 15, 4, 6); }
+    cx.fillStyle = '#59c8ff'; cx.fillRect(239, -14, 2, 8);
+  }
+  hills(th.far, .25, GY - 38, 16); hills(th.mid, .5, GY - 20, 10);
+  drawProps(th, t);
+  cx.fillStyle = th.ground; cx.fillRect(0, GY, W, H - GY); cx.fillStyle = th.gtop; cx.fillRect(0, GY, W, 4);
+  cx.fillStyle = '#0003'; for (let x = -(sc % 24); x < W; x += 24) { cx.fillRect(x, GY + 9, 12, 2); cx.fillRect(x + 11, GY + 22, 10, 2); }
+}
+
+/* ---------- guild hall ---------- */
+const GF = 128, HY_G = 156;
+function flame(x, y, t, s = 1) {
+  const h = (6 + 2 * Math.sin(t / 80 + x) + Math.sin(t / 47 + x * 2)) * s;
+  cx.fillStyle = '#ff7a1a'; cx.fillRect(x - 2 * s, y - h, 4 * s, h);
+  cx.fillStyle = '#ffd23f'; cx.fillRect(x - 1 * s, y - h * .65, 2 * s, h * .65);
+}
+function glow(x, y, r, a) { const g = cx.createRadialGradient(x, y, 1, x, y, r); g.addColorStop(0, `rgba(255,170,70,${a})`); g.addColorStop(1, 'rgba(255,170,70,0)'); cx.fillStyle = g; cx.fillRect(x - r, y - r, r * 2, r * 2); }
+function drawMaster(t) {
+  const talk = master.talk, bob = Math.sin(t / 700), gest = talk ? Math.sin(t / 140) : 0, up = talk ? 3 + gest * 2 : 0;
+  cx.save(); cx.translate(254, 148); cx.scale(1.35, 1.35);
+  cx.fillStyle = '#2f2160'; cx.fillRect(-11, -36 + bob, 22, 36); cx.fillStyle = '#3d2c80'; cx.fillRect(-12, -36 + bob, 24, 7);
+  cx.fillStyle = '#ffc857'; cx.fillRect(-1, -36 + bob, 2, 36); cx.fillRect(-12, -30 + bob, 24, 1);
+  cx.fillStyle = '#3d2c80'; cx.fillRect(-16, -32 + bob, 5, 14); cx.fillRect(11, -32 + bob - up, 5, 10);
+  cx.fillStyle = '#e8c4a0'; cx.fillRect(-16, -19 + bob, 5, 4); cx.fillRect(11, -23 + bob - up, 5, 4);
+  cx.fillRect(-5, -47 + bob, 10, 11);
+  cx.fillStyle = '#f2f2fa'; cx.fillRect(-7, -50 + bob, 14, 6); cx.fillRect(-7, -46 + bob, 3, 10); cx.fillRect(4, -46 + bob, 3, 10);
+  const wag = talk ? Math.sin(t / 90) * 1.5 : 0;
+  cx.beginPath(); cx.moveTo(-5, -38 + bob); cx.lineTo(5, -38 + bob); cx.lineTo(3 + wag, -18 + bob); cx.lineTo(-3 + wag, -18 + bob); cx.closePath(); cx.fill();
+  cx.fillStyle = '#ffc857'; cx.fillRect(-6, -51 + bob, 12, 1);
+  cx.fillStyle = '#8fd8ff'; cx.fillRect(-3, -44 + bob, 2, 2); cx.fillRect(1, -44 + bob, 2, 2);
+  cx.fillStyle = '#f2f2fa'; cx.fillRect(-4, -46 + bob, 4, 1); cx.fillRect(1, -46 + bob, 4, 1);
+  const orb = .5 + .5 * Math.sin(t / (talk ? 120 : 400));
+  cx.fillStyle = '#6b4a2a'; cx.fillRect(20, -52 + bob, 2, 52);
+  cx.fillStyle = `rgba(89,200,255,${.15 + orb * .25})`; cx.beginPath(); cx.arc(21, -56 + bob, 9 + orb * 3, 0, 6.283); cx.fill();
+  cx.fillStyle = '#59c8ff'; cx.beginPath(); cx.arc(21, -56 + bob, 4, 0, 6.283); cx.fill(); cx.fillStyle = '#fff'; cx.fillRect(20, -58 + bob, 2, 2);
+  cx.restore();
+}
+function drawRival(t) {
+  const b = Math.sin(t / 600) * .8;
+  cx.save(); cx.translate(182, 152);
+  cx.fillStyle = '#0005'; cx.fillRect(-9, -1, 18, 3);
+  cx.fillStyle = '#14142b'; cx.fillRect(-4, -12, 3, 12); cx.fillRect(1, -12, 3, 12);
+  cx.fillStyle = '#8a95b5'; cx.save(); cx.rotate(-.5); cx.fillRect(-9, -40 + b, 2, 26); cx.restore();
+  cx.fillStyle = '#2a1020'; cx.fillRect(-6, -26 + b, 12, 14);
+  cx.fillStyle = '#c0243a'; cx.fillRect(-6, -26 + b, 12, 3); cx.fillRect(4, -26 + b, 3, 14);
+  cx.fillStyle = '#3a1a2a'; cx.fillRect(-7, -21 + b, 14, 4); cx.fillStyle = '#e8c4a0'; cx.fillRect(-7, -21 + b, 3, 3);
+  cx.fillStyle = '#e8c4a0'; cx.fillRect(-4, -34 + b, 8, 8);
+  cx.fillStyle = '#d9dcef'; cx.fillRect(-5, -37 + b, 10, 4); cx.fillRect(-6, -35 + b, 2, 5); cx.fillRect(3, -40 + b, 3, 4); cx.fillRect(-1, -41 + b, 3, 3);
+  cx.fillStyle = '#12122a'; cx.fillRect(1, -31 + b, 2, 1); cx.fillRect(-3, -31 + b, 2, 1);
+  cx.restore();
+  txt('KAEL · ' + GRANKS[rivalIdx()], 182, 106, RCOL[GRANKS[rivalIdx()]], 'center', 6);
+}
+function drawGuild(t) {
+  cx.fillStyle = '#211a2b'; cx.fillRect(0, 0, W, H);
+  for (let r = 0; r < 10; r++) { cx.fillStyle = r % 2 ? '#2d2339' : '#292034'; for (let x = r % 2 ? -16 : 0; x < W; x += 32) cx.fillRect(x + 1, r * 12 + 10, 30, 10); }
+  cx.fillStyle = '#3a2a1a'; cx.fillRect(139, 18, 42, 58); cx.fillStyle = '#0b1030'; cx.fillRect(142, 21, 36, 52);
+  cx.fillStyle = '#fff'; for (let i = 0; i < 8; i++) cx.fillRect(144 + (i * 13) % 32, 24 + (i * 17) % 44, 1, 1);
+  cx.fillStyle = '#e6dcff'; cx.beginPath(); cx.arc(166, 36, 6, 0, 6.283); cx.fill();
+  cx.fillStyle = '#3a2a1a'; cx.fillRect(159, 21, 2, 52); cx.fillRect(142, 44, 36, 2);
+  cx.globalAlpha = .06; cx.fillStyle = '#bcd0ff'; cx.beginPath(); cx.moveTo(142, 76); cx.lineTo(178, 76); cx.lineTo(236, GF + 40); cx.lineTo(110, GF + 40); cx.fill(); cx.globalAlpha = 1;
+  cx.fillStyle = '#4a3220'; cx.fillRect(0, 0, W, 9); cx.fillStyle = '#35241a'; cx.fillRect(0, 8, W, 2);
+  for (const bx of [14, 306]) {
+    cx.fillStyle = '#7a1f35'; cx.fillRect(bx - 9, 9, 18, 44);
+    cx.fillStyle = '#292034'; cx.beginPath(); cx.moveTo(bx - 9, 53); cx.lineTo(bx, 45); cx.lineTo(bx + 9, 53); cx.fill();
+    cx.fillStyle = '#ffc857'; cx.beginPath(); cx.moveTo(bx, 18); cx.lineTo(bx + 5, 26); cx.lineTo(bx, 34); cx.lineTo(bx - 5, 26); cx.fill();
+  }
+  cx.fillStyle = '#5a3d26'; cx.fillRect(26, 28, 92, 80); cx.fillStyle = '#8a6338'; cx.fillRect(29, 31, 86, 74);
+  cx.fillStyle = '#7a5530'; for (let i = 0; i < 18; i++) cx.fillRect(31 + (i * 23) % 80, 33 + (i * 37) % 68, 2, 1);
+  for (const [x, y, w, h, c] of [[34, 36, 16, 20, '#e9d8a6'], [82, 36, 18, 22, '#d9c690'], [96, 66, 16, 18, '#f0e2b8'], [34, 70, 18, 16, '#d9c690'], [58, 78, 14, 20, '#e9d8a6'], [80, 72, 12, 16, '#f0e2b8']]) {
+    cx.fillStyle = c; cx.fillRect(x, y, w, h); cx.fillStyle = '#0003'; for (let k = 0; k < h - 6; k += 4) cx.fillRect(x + 2, y + 4 + k, w - 5, 1);
+    cx.fillStyle = '#b3202e'; cx.fillRect(x + w / 2 - 1, y, 2, 2);
+  }
+  if (!scene.noteTaken) {
+    const gl = .5 + .5 * Math.sin(t / 260); glow(66, 54, 22 + gl * 6, .35 + gl * .25);
+    cx.fillStyle = '#f7e9b0'; cx.fillRect(56, 42, 22, 26); cx.fillStyle = '#0003'; for (let k = 0; k < 5; k++) cx.fillRect(59, 46 + k * 4, 16, 1);
+    cx.fillStyle = '#ffc857'; cx.fillRect(65, 42, 4, 3); cx.fillStyle = '#b3202e'; cx.fillRect(65, 58, 4, 4);
+  }
+  txt('QUEST BOARD', 72, 24, '#ffc857', 'center', 7);
+  cx.fillStyle = '#4a3220'; cx.fillRect(0, GF, W, H - GF); cx.fillStyle = '#7a5232'; cx.fillRect(0, GF, W, 3);
+  cx.fillStyle = '#3a2616'; for (let x = 0; x < W; x += 28) cx.fillRect(x, GF + 3, 1, H - GF); for (let y = GF + 14; y < H; y += 14) cx.fillRect(0, y, W, 1);
+  cx.fillStyle = '#6e1a2c'; cx.fillRect(50, GF + 14, 220, 30); cx.fillStyle = '#ffc857'; cx.fillRect(50, GF + 14, 220, 2); cx.fillRect(50, GF + 42, 220, 2);
+  for (const tx of [127, 196]) { glow(tx, 72, 44, .22 + .04 * Math.sin(t / 90 + tx)); cx.fillStyle = '#3a2a1a'; cx.fillRect(tx - 1, 72, 3, 9); cx.fillRect(tx - 3, 70, 7, 3); flame(tx, 70, t); }
+  drawRival(t);
+  drawMaster(t);
+  cx.fillStyle = '#4a3220'; cx.fillRect(206, 126, 98, 24); cx.fillStyle = '#6b4a2a'; cx.fillRect(204, 120, 102, 6); cx.fillStyle = '#35241a'; cx.fillRect(210, 130, 90, 16); cx.fillStyle = '#ffc857'; cx.fillRect(250, 134, 10, 6);
+  cx.fillStyle = '#e9d8a6'; cx.fillRect(226, 116, 18, 4); cx.fillStyle = '#7a1f35'; cx.fillRect(226, 119, 18, 1);
+  cx.fillStyle = '#ffc857'; cx.fillRect(264, 108, 8, 2); cx.fillRect(264, 118, 8, 2); cx.fillStyle = '#bcd0ffaa'; cx.fillRect(266, 110, 4, 8);
+  cx.fillStyle = '#eee'; cx.fillRect(290, 110, 4, 10); flame(292, 110, t, .8); glow(292, 106, 26, .2);
+}
+
+/* ---------- hero ---------- */
+function drawHero(t) {
+  const h = hero, tn = h.state === 'tense' ? tension : 0;
+  cx.save(); cx.translate(Math.round(h.x + h.ox + (tn ? Math.sin(t / 33) * tn * 1.3 : 0)), Math.round(h.y - h.hop)); if (tn) cx.rotate(-tn * .05);
+  cx.fillStyle = '#0005'; cx.fillRect(-10, h.hop - 1, 20, 3);
+  if (h.state === 'dead') cx.rotate(-1.5 * h.dead);
+  const fl = h.flash > 0, c = a => fl ? '#fff' : a;
+  const run = h.state === 'run', ph = run ? Math.sin(t / 65) : 0, bob = (h.state === 'idle' || h.state === 'tense') ? Math.sin(t / (280 - 170 * tn)) * (1 + tn * 1.2) : 0;
+  cx.fillStyle = c('#171a33'); cx.fillRect(-5, -14, 4, 14 - (run ? Math.max(0, ph) * 4 : 0)); cx.fillRect(1, -14, 4, 14 - (run ? Math.max(0, -ph) * 4 : 0));
+  cx.fillStyle = c('#0b0c1c'); cx.fillRect(-6, -2, 5, 2); cx.fillRect(1, -2, 5, 2);
+  const fw = run ? 4 + ph * 2 : 1 + Math.sin(t / 300);
+  cx.fillStyle = c('#3a2a7a'); cx.beginPath(); cx.moveTo(-5, -27 + bob); cx.lineTo(-13 - fw, -12 + bob); cx.lineTo(-10 - fw * .6, -5 + bob); cx.lineTo(-4, -12 + bob); cx.closePath(); cx.fill();
+  cx.fillStyle = c('#222a73'); cx.fillRect(-6, -27 + bob, 12, 14);
+  cx.fillStyle = c('#59c8ff'); cx.fillRect(-6, -15 + bob, 12, 2); cx.fillRect(-1, -27 + bob, 2, 12);
+  cx.fillStyle = c('#f0c8a4'); cx.fillRect(-4, -35 + bob, 8, 8);
+  cx.fillStyle = c('#12122a'); cx.fillRect(-5, -37 + bob, 10, 4); cx.fillRect(-6, -36 + bob, 2, 4); cx.fillRect(2, -40 + bob, 3, 4); cx.fillRect(-2, -40 + bob, 3, 3);
+  if (tn > .05) { cx.fillStyle = c('#fff'); cx.fillRect(0, -33 + bob, 4, 4); cx.fillStyle = c('#12122a'); cx.fillRect(1 + Math.round(Math.sin(t / 170)), -32 + bob, 2, 2); } else cx.fillRect(1, -32 + bob, 2, 2);
+  cx.save(); cx.translate(5, -22 + bob); cx.rotate(h.sword);
+  cx.fillStyle = c('#222a73'); cx.fillRect(0, -2, 7, 4);
+  cx.fillStyle = c('#ffc857'); cx.fillRect(6, -5, 3, 10);
+  cx.fillStyle = c('#cfe0ff'); cx.fillRect(9, -2, 24, 4);
+  cx.fillStyle = c('#ffffff'); cx.fillRect(9, -2, 24, 1);
+  cx.restore(); cx.restore();
+}
+
+/* ---------- allies ---------- */
+const makeAlly = id => ({ id, x: -40, y: GY, ox: 0, hop: 0, state: 'idle', ph: Math.random() * 6, flash: 0, busy: false, kneel: false, rope: false, cage: false, captive: false, front: false });
+const live = () => allies.filter(a => !a.down);
+const allyById = id => allies.find(a => a.id === id && !a.down);
+function syncAllies() { allies.length = 0; G.party.forEach((id, k) => { const a = makeAlly(id); a.down = G.down === id; a.x = HEROX - 24 * (k + 1); a.y = GY + (k % 2 ? -2 : 6); allies.push(a); }); }
+function drawAlly(a, t) {
+  const d = PARTY[a.id], run = a.state === 'run', ph = run ? Math.sin(t / 70 + a.ph) : 0, nerv = a.captive ? .6 : tension > .3 ? tension * .8 : 0;
+  const bob = a.state === 'idle' ? Math.sin(t / (300 - 120 * tension) + a.ph) * (1 + tension) : 0, big = a.id === 'brock' ? 1.15 : 1, c = x => a.flash > 0 ? '#fff' : x;
+  cx.save(); cx.translate(Math.round(a.x + a.ox + (nerv ? Math.sin(t / 37 + a.ph) * nerv : 0)), Math.round(a.y - a.hop)); cx.scale(big, a.kneel ? big * .82 : big); if (a.down) cx.rotate(-1.45);
+  cx.fillStyle = '#0005'; cx.fillRect(-9, -1, 18, 3);
+  cx.fillStyle = c('#1a1c33'); cx.fillRect(-4, -12, 3, 12 - (run ? Math.max(0, ph) * 3 : 0)); cx.fillRect(1, -12, 3, 12 - (run ? Math.max(0, -ph) * 3 : 0));
+  if (a.id === 'lyra') { cx.fillStyle = c(d.hair); cx.fillRect(-7, -30 + bob, 4, 18); }
+  if (a.id === 'mira') { cx.fillStyle = c(d.hair); cx.fillRect(-9, -30 + bob, 4, 6 + Math.sin(t / 200)); cx.fillRect(-11, -26 + bob, 3, 8); }
+  cx.fillStyle = c(d.coat); cx.fillRect(-5, -25 + bob, 10, 13); cx.fillStyle = c(d.trim); cx.fillRect(-5, -15 + bob, 10, 2);
+  if (a.id === 'brock') { cx.fillStyle = c(d.coat); cx.fillRect(-8, -27 + bob, 16, 5); cx.fillStyle = c(d.trim); cx.fillRect(-8, -27 + bob, 16, 1); }
+  cx.fillStyle = c(d.skin); cx.fillRect(-4, -33 + bob, 8, 8);
+  if (a.id === 'mira') { cx.fillStyle = c(d.hair); cx.fillRect(-5, -35 + bob, 10, 4); cx.fillRect(-5, -33 + bob, 2, 4); }
+  if (a.id === 'brock') { cx.fillStyle = c('#8a95b5'); cx.fillRect(-5, -36 + bob, 10, 5); cx.fillRect(-1, -39 + bob, 2, 4); }
+  if (a.id === 'lyra') { cx.fillStyle = c(d.coat); cx.fillRect(-6, -36 + bob, 12, 5); cx.fillRect(-6, -33 + bob, 2, 6); cx.fillRect(4, -33 + bob, 2, 6); cx.fillStyle = c(d.hair); cx.fillRect(-4, -31 + bob, 8, 1); }
+  cx.fillStyle = c('#12122a'); cx.fillRect(1, -30 + bob, 2, 2);
+  if (a.id === 'mira') { cx.strokeStyle = c('#8b5a2b'); cx.lineWidth = 2; cx.beginPath(); cx.arc(6, -20 + bob, 10, -1.3, 1.3); cx.stroke(); cx.strokeStyle = c('#fff'); cx.lineWidth = .6; cx.beginPath(); cx.moveTo(6 + Math.cos(-1.3) * 10, -20 + bob + Math.sin(-1.3) * 10); cx.lineTo(6 + Math.cos(1.3) * 10, -20 + bob + Math.sin(1.3) * 10); cx.stroke(); }
+  if (a.id === 'brock') { cx.fillStyle = c(d.trim); cx.fillRect(4, -26 + bob, 9, 16); cx.fillStyle = c('#7a1f35'); cx.fillRect(7, -23 + bob, 3, 10); cx.fillRect(5, -19 + bob, 7, 3); }
+  if (a.id === 'lyra') { const o = .5 + .5 * Math.sin(t / 300); cx.fillStyle = c('#6b4a2a'); cx.fillRect(8, -36 + bob, 2, 36); cx.fillStyle = `rgba(125,255,217,${.2 + o * .3})`; cx.beginPath(); cx.arc(9, -39 + bob, 6 + o * 2, 0, 6.283); cx.fill(); cx.fillStyle = c('#7dffd9'); cx.beginPath(); cx.arc(9, -39 + bob, 3, 0, 6.283); cx.fill(); }
+  if (a.rope) { cx.fillStyle = '#8b6a3a'; cx.fillRect(-6, -24 + bob, 12, 2); cx.fillRect(-6, -19 + bob, 12, 2); cx.fillRect(-4, -12, 8, 2); }
+  cx.restore();
+  if (a.cage) { cx.fillStyle = '#6a6f8c'; for (let k = -2; k <= 2; k++) cx.fillRect(a.x + k * 7 - 1, a.y - 46, 2, 48); cx.fillRect(a.x - 17, a.y - 47, 34, 3); cx.fillRect(a.x - 17, a.y - 1, 34, 3); }
+}
+
+/* ---------- monsters (all face left) ---------- */
+const DRAW = {
+  goblin(m, t, c) {
+    const one = (x, y, s, ph) => {
+      cx.save(); cx.translate(x, y); cx.scale(s, s); const b = Math.sin(t / 160 + ph) * 1.5;
+      cx.fillStyle = c(m.col2); cx.fillRect(-6, -10, 4, 10); cx.fillRect(2, -10, 4, 10);
+      cx.fillStyle = c('#6b4a2a'); cx.fillRect(-8, -22 + b, 16, 12);
+      cx.fillStyle = c(m.col); cx.fillRect(-7, -32 + b, 14, 11); cx.fillRect(-12, -30 + b, 5, 3); cx.fillRect(7, -30 + b, 5, 3);
+      cx.fillStyle = c('#ffd23f'); cx.fillRect(-5, -29 + b, 3, 3); cx.fillRect(2, -29 + b, 3, 3);
+      cx.fillStyle = c('#10122a'); cx.fillRect(-4, -28 + b, 1, 2); cx.fillRect(3, -28 + b, 1, 2);
+      cx.fillStyle = c('#fff'); cx.fillRect(-3, -24 + b, 2, 2); cx.fillRect(1, -24 + b, 2, 2);
+      cx.fillStyle = c('#aab0c8'); cx.fillRect(-16, -24 + b, 3, 14); cx.fillRect(-17, -27 + b, 5, 4);
+      cx.restore();
+    };
+    one(28, 0, .8, 1.3); one(-2, 3, .9, 2.1); one(0, 0, 1.08, 0);
+  },
+  bandit(m, t, c) {
+    const one = (x, y, s, ph) => {
+      cx.save(); cx.translate(x, y); cx.scale(s, s); const b = Math.sin(t / 170 + ph) * 1.2;
+      cx.fillStyle = c(m.col2); cx.fillRect(-5, -12, 4, 12); cx.fillRect(1, -12, 4, 12);
+      cx.fillStyle = c(m.col); cx.fillRect(-8, -27 + b, 16, 16);
+      cx.fillStyle = c('#2d2530'); cx.fillRect(-9, -28 + b, 18, 3);
+      cx.fillStyle = c('#e0b08a'); cx.fillRect(-5, -37 + b, 10, 10);
+      cx.fillStyle = c('#c0392b'); cx.fillRect(-6, -39 + b, 12, 4); cx.fillRect(6, -37 + b, 4, 3);
+      cx.fillStyle = c('#2d2530'); cx.fillRect(-5, -31 + b, 10, 4);
+      cx.fillStyle = c('#fff'); cx.fillRect(-4, -34 + b, 3, 2); cx.fillRect(1, -34 + b, 3, 2);
+      cx.fillStyle = c('#10122a'); cx.fillRect(-3, -34 + b, 1, 2); cx.fillRect(2, -34 + b, 1, 2);
+      cx.fillStyle = c('#cfd8ff'); cx.fillRect(-18, -22 + b, 9, 2); cx.fillRect(-19, -24 + b, 2, 6);
+      cx.restore();
+    };
+    one(28, 0, .85, 1.1); one(0, 0, 1.12, 0);
+  },
+  slime(m, t, c) {
+    const sq = 1 + .1 * Math.sin(t / 180), hh = 18 * sq, ww = 17 / sq;
+    for (let i = 0; i < hh; i += 2) { const w = ww * Math.sqrt(Math.max(0, 1 - (i / hh) * (i / hh))); cx.fillStyle = c(m.col); cx.fillRect(-w, -i - 2, w * 2, 2); }
+    cx.fillStyle = c(m.col2); cx.fillRect(-ww + 3, -4, ww * 2 - 6, 3);
+    cx.fillStyle = c('#fff'); cx.fillRect(-8, -hh * .62, 4, 5); cx.fillRect(3, -hh * .62, 4, 5);
+    cx.fillStyle = c('#10122a'); cx.fillRect(-7, -hh * .62 + 2, 2, 3); cx.fillRect(4, -hh * .62 + 2, 2, 3);
+    cx.fillStyle = c('#ffffffaa'); cx.fillRect(-ww * .55, -hh * .85, 4, 3);
+  },
+  bat(m, t, c) {
+    const f = Math.sin(t / 70), by = -34 + Math.sin(t / 300) * 3;
+    cx.fillStyle = c(m.col2);
+    for (const s of [-1, 1]) { cx.beginPath(); cx.moveTo(s * 4, by - 2); cx.lineTo(s * 24, by - 10 * f - 6); cx.lineTo(s * 20, by + 2); cx.lineTo(s * 13, by - 1); cx.lineTo(s * 8, by + 7); cx.closePath(); cx.fill(); }
+    cx.fillStyle = c(m.col); cx.fillRect(-6, by - 8, 12, 14); cx.fillRect(-6, by - 12, 3, 5); cx.fillRect(3, by - 12, 3, 5);
+    cx.fillStyle = c('#ff5c7a'); cx.fillRect(-4, by - 4, 3, 3); cx.fillRect(1, by - 4, 3, 3);
+    cx.fillStyle = c('#fff'); cx.fillRect(-3, by + 4, 1, 3); cx.fillRect(2, by + 4, 1, 3);
+  },
+  wolf(m, t, c) {
+    const r = Math.sin(t / 90) * 2;
+    cx.fillStyle = c(m.col2); cx.fillRect(-12, -11, 4, 11 - Math.max(0, r)); cx.fillRect(-5, -11, 4, 11 - Math.max(0, -r)); cx.fillRect(6, -11, 4, 11 - Math.max(0, -r)); cx.fillRect(12, -11, 4, 11 - Math.max(0, r));
+    cx.fillStyle = c(m.col); cx.fillRect(-14, -24, 30, 13); cx.fillRect(16, -28 - Math.sin(t / 120) * 3, 10, 4);
+    cx.fillRect(-26, -32, 14, 12); cx.fillRect(-33, -26, 8, 6); cx.fillRect(-24, -37, 4, 6); cx.fillRect(-17, -37, 4, 6);
+    cx.fillStyle = c(m.col2); cx.fillRect(-12, -26, 20, 3);
+    cx.fillStyle = c('#ff5c7a'); cx.fillRect(-22, -29, 3, 3);
+    cx.fillStyle = c('#10122a'); cx.fillRect(-34, -26, 2, 2);
+    cx.fillStyle = c('#fff'); cx.fillRect(-31, -20, 2, 3); cx.fillRect(-27, -20, 2, 3);
+  },
+  golem(m, t, c) {
+    const b = Math.sin(t / 400) * 1.5;
+    cx.fillStyle = c(m.col2); cx.fillRect(-11, -12, 9, 12); cx.fillRect(2, -12, 9, 12); cx.fillRect(-24, -34 + b, 9, 22); cx.fillRect(15, -34 + b, 9, 22);
+    cx.fillStyle = c(m.col); cx.fillRect(-15, -36 + b, 30, 26); cx.fillRect(-25, -14 + b, 11, 8); cx.fillRect(14, -14 + b, 11, 8); cx.fillRect(-8, -47 + b, 16, 12);
+    cx.fillStyle = c('#7dffd9'); cx.fillRect(-5, -43 + b, 3, 3); cx.fillRect(2, -43 + b, 3, 3);
+    cx.fillStyle = c(Math.sin(t / 200) > 0 ? '#ffc857' : '#ff9d4a'); cx.fillRect(-4, -28 + b, 8, 8);
+    cx.fillStyle = c('#0005'); cx.fillRect(-10, -34 + b, 2, 10); cx.fillRect(7, -22 + b, 2, 8);
+  },
+  wraith(m, t, c) {
+    const fl = -12 + Math.sin(t / 250) * 4;
+    for (let x = -13; x <= 13; x += 2) { const bot = fl + 4 + 4 * Math.sin(t / 140 + x / 3), top = fl - 34 + (Math.abs(x) > 8 ? 6 : 0); cx.fillStyle = c(m.col); cx.fillRect(x, top, 2, bot - top); }
+    cx.fillStyle = c('#0a0818'); cx.fillRect(-7, fl - 30, 14, 12);
+    cx.fillStyle = c('#7dffd9'); cx.fillRect(-5, fl - 26, 3, 3); cx.fillRect(2, fl - 26, 3, 3);
+    cx.fillStyle = c(m.col2); cx.fillRect(-21, fl - 16 + Math.sin(t / 200) * 3, 9, 3); cx.fillRect(12, fl - 16 - Math.sin(t / 200) * 3, 9, 3);
+  },
+  dragon(m, t, c) {
+    const f = Math.sin(t / 160), b = Math.sin(t / 500) * 2;
+    cx.fillStyle = c(m.col2); cx.beginPath(); cx.moveTo(8, -40 + b); cx.lineTo(34, -76 - 8 * f + b); cx.lineTo(30, -52 + b); cx.lineTo(44, -60 - 4 * f + b); cx.lineTo(36, -34 + b); cx.closePath(); cx.fill();
+    for (let k = 0; k < 6; k++) cx.fillRect(20 + k * 7, -20 - k * 2 + Math.sin(t / 200 + k) * 2, 9 - k, 8 - k);
+    cx.fillRect(-10, -12, 8, 12); cx.fillRect(8, -12, 8, 12);
+    cx.fillStyle = c(m.col); cx.fillRect(-18, -38 + b, 40, 28);
+    cx.fillStyle = c('#ffe29a'); cx.fillRect(-16, -24 + b, 20, 12);
+    cx.fillStyle = c(m.col); cx.fillRect(-28, -52 + b, 14, 22); cx.fillRect(-40, -58 + b, 24, 14);
+    cx.fillStyle = c(m.col2); cx.fillRect(-42, -46 + b, 22, 5); cx.fillRect(-12, -42 + b, 4, 5); cx.fillRect(-2, -42 + b, 4, 5); cx.fillRect(8, -42 + b, 4, 5);
+    cx.fillStyle = c('#f4ecd0'); cx.fillRect(-26, -66 + b, 4, 9); cx.fillRect(-18, -66 + b, 4, 9); cx.fillRect(-39, -47 + b, 2, 3); cx.fillRect(-33, -47 + b, 2, 3);
+    cx.fillStyle = c('#ffd23f'); cx.fillRect(-32, -54 + b, 5, 4);
+    cx.fillStyle = c('#10122a'); cx.fillRect(-31, -53 + b, 2, 2);
+  }
+};
+const PAL = { goblin: [['#6fbf4a', '#3f7f2a']], bandit: [['#7a4a4a', '#2d2530']], slime: [['#5fd38a', '#2f9a5a'], ['#59c8ff', '#2d86c9'], ['#ffb347', '#d17a1f'], ['#ff6bd6', '#b83a93']], bat: [['#7a5cff', '#4a3a9a']], wolf: [['#9aa4c8', '#575f84']], golem: [['#98939f', '#5f5a6c']], wraith: [['#8f6bff', '#5b3fb0']], dragon: [['#d6485b', '#7a1f35']] };
+function drawMon(t) {
+  if (!mon) return; const m = mon;
+  cx.save(); cx.globalAlpha = Math.max(0, m.alpha); cx.translate(Math.round(m.x + m.ox), Math.round(m.y)); cx.scale(m.s, m.s);
+  cx.fillStyle = '#0004'; cx.fillRect(-18, -1, 36, 3);
+  cx.translate(0, m.oy || 0);
+  DRAW[m.type](m, t, a => m.flash > 0 ? '#fff' : (m.warn && Math.floor(t / 70) % 2 ? '#ff5c7a' : a));
+  cx.restore();
+}
+
+/* ---------- fx ---------- */
+function burst(x, y, col, n = 12, spd = 2.5) { for (let i = 0; i < n; i++) { const a = rnd(0, 6.283), s = rnd(.5, spd); parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1, life: rnd(25, 50), col, sz: rnd(1, 3), g: .08 }); } }
+function update(dt, t) {
+  scene.scroll += scene.speed * dt;
+  allies.forEach((a, k) => { if (a.busy) return; const base = scene.guild ? 104 : HEROX, tx = base - 24 * (k + 1), ty = (scene.guild ? HY_G : GY) + (k % 2 ? -2 : 6); a.x += (tx - a.x) * Math.min(1, .1 * dt); a.y += (ty - a.y) * Math.min(1, .2 * dt); a.state = Math.abs(tx - a.x) > 3 || scene.speed > .5 ? 'run' : 'idle'; if (a.flash > 0) a.flash -= dt; });
+  if (guest && guest.flash > 0) guest.flash -= dt;
+  if (mon && mon.enraged && Math.random() < .25 * dt) parts.push({ x: mon.x + mon.ox + rnd(-20, 20), y: mon.y - rnd(0, 50) * mon.s, vx: rnd(-.2, .2), vy: -rnd(.4, 1), life: 30, col: '#ff5c3a', sz: 2, g: 0 });
+  { const now = performance.now();
+    if (anx.on && mon) {
+      const secs = (now - anx.t0) / 1000, low = hero.hp <= 1 ? .35 : hero.hp <= 2 ? .12 : 0, target = Math.min(1, secs / 9 * .85 + low + (mon.boss ? .12 : 0));
+      tension += (target - tension) * Math.min(1, .05 * dt);
+      if (!atkP) mon.ox += (-tension * 36 - mon.ox) * .03 * dt;
+      if (!hero.lock) hero.sword = -.3 + Math.sin(t / 40) * .07 * tension;
+      if (PRESSURE && !atkP && !mon.dying && now > anx.nextAtk) { const out = ['dodge', 'hit', 'parry'][anx.atkN++ % 3]; anx.nextAtk = now + (mon.boss || mon.enraged ? 8000 : 11000); anx.chargeFrom = now; atkP = idleAttack(out).finally(() => { atkP = null; }); }
+      if (now > anx.nextThought) { anx.nextThought = now + rnd(3800, 5200); const lv = live(); if (lv.length && Math.random() < .5) { const al = lv[Math.random() * lv.length | 0], ch = PARTY[al.id].cheer; bubble = { txt: ch[Math.random() * ch.length | 0], life: 170, max: 170, at: al }; } else { const P = hero.hp <= 1 ? THOUGHTS.hurt : mon.boss && Math.random() < .4 ? THOUGHTS.boss : tension > .55 ? THOUGHTS.high : tension > .25 ? THOUGHTS.mid : THOUGHTS.low; bubble = { txt: P[Math.random() * P.length | 0], life: 170, max: 170 }; } }
+      if (tension > .45 && now > anx.nextGrowl) { anx.nextGrowl = now + rnd(4500, 6500); texts.push({ x: mon.x + mon.ox, y: mon.y - 52 * mon.s, vy: -.2, life: 70, txt: TAUNT[mon.type] || '...', col: '#ff9d4a' }); shake = Math.max(shake, 2.5); beep(70, .35, 'sawtooth', .05); }
+      if (Math.random() < tension * .07 * dt) parts.push({ x: hero.x + hero.ox + (Math.random() < .5 ? -5 : 6), y: hero.y - 38, vx: rnd(-.1, .3), vy: rnd(.1, .4), life: 28, col: '#bfeaff', sz: 2, g: .05 });
+    } else { tension *= Math.pow(.9, dt); if (tension < .01) tension = 0; }
+    if (tension > .12 && now > anx.nextBeat) { anx.nextBeat = now + 1150 - 700 * tension; beatPulse = 1; beep(58, .12, 'sine', .14); setTimeout(() => beep(48, .14, 'sine', .1), 150); }
+    beatPulse *= Math.pow(.9, dt);
+    if (bubble) { bubble.life -= dt; if (bubble.life <= 0) bubble = null; }
+    if (guest && guest.captive && !bubble && inFight && now > guestCry) { guestCry = now + rnd(5000, 7000); bubble = { txt: 'Help!', life: 90, max: 90, at: guest }; }
+    if (linesT > 0) linesT -= dt;
+  }
+  if (hero.flash > 0) hero.flash -= dt; if (mon && mon.flash > 0) mon.flash -= dt;
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; p.life -= dt; if (p.life <= 0) parts.splice(i, 1); }
+  for (let i = texts.length - 1; i >= 0; i--) { const x = texts[i]; x.y += x.vy * dt; x.life -= dt; if (x.life <= 0) texts.splice(i, 1); }
+  for (let i = slashes.length - 1; i >= 0; i--) { slashes[i].t += dt; if (slashes[i].t > 10) slashes.splice(i, 1); }
+  shake *= Math.pow(.85, dt); if (shake < .1) shake = 0; flashA = Math.max(0, flashA - .04 * dt);
+  const th = THEMES[scene.theme % THEMES.length];
+  if (Math.random() < .12 * dt) parts.push({ x: rnd(0, W), y: rnd(0, GY), vx: -.2 - scene.speed * .4, vy: rnd(-.05, .15), life: 140, col: scene.guild ? '#ffe2a8' : th.mote, sz: 1, g: 0 });
+  if (mon && mon.type === 'dragon' && mon.alpha > .5 && Math.random() < .2 * dt) parts.push({ x: mon.x + mon.ox - 42 * mon.s, y: mon.y - 50 * mon.s, vx: -1 - Math.random(), vy: -.5 - Math.random() * .5, life: 25, col: '#ff9d4a', sz: 2, g: 0 });
+}
+function bar(x, y, w, h, pct, col) { pct = Math.max(0, Math.min(1, pct)); cx.fillStyle = '#000a'; cx.fillRect(x - 1, y - 1, w + 2, h + 2); cx.fillStyle = '#2a2f55'; cx.fillRect(x, y, w, h); cx.fillStyle = col; cx.fillRect(x, y, w * pct, h); cx.fillStyle = '#ffffff44'; cx.fillRect(x, y, w * pct, 1); }
+function txt(s, x, y, col = '#fff', al = 'left', size = 8) { cx.font = `bold ${size}px ui-monospace,Menlo,monospace`; cx.textAlign = al; cx.fillStyle = '#000'; cx.fillText(s, x + 1, y + 1); cx.fillStyle = col; cx.fillText(s, x, y); }
+function render(t) {
+  cx.save();
+  if (shake > 0) cx.translate(Math.round(rnd(-shake, shake)), Math.round(rnd(-shake, shake)));
+  scene.guild ? drawGuild(t) : drawBG(t);
+  if (guest && !guest.front) drawAlly(guest, t);
+  drawMon(t);
+  if (guest && guest.front) drawAlly(guest, t);
+  for (const a of allies) drawAlly(a, t);
+  drawHero(t);
+  cx.strokeStyle = '#ffe29a'; cx.lineWidth = 1.5; for (const ar of arrows) { cx.beginPath(); cx.moveTo(ar.x - 9, ar.y + 1); cx.lineTo(ar.x, ar.y); cx.stroke(); cx.fillStyle = '#fff'; cx.fillRect(ar.x, ar.y - 1, 3, 2); }
+  for (const o of orbs) { cx.fillStyle = 'rgba(181,140,255,.3)'; cx.beginPath(); cx.arc(o.x, o.y, 9 + Math.sin(t / 60) * 1.5, 0, 6.283); cx.fill(); cx.fillStyle = '#b58cff'; cx.beginPath(); cx.arc(o.x, o.y, 5, 0, 6.283); cx.fill(); cx.fillStyle = '#fff'; cx.fillRect(o.x - 1, o.y - 2, 2, 2); }
+  for (const s of slashes) { const p = s.t / 10; cx.save(); cx.translate(s.x, s.y); cx.rotate(s.ang); cx.globalAlpha = 1 - p; cx.strokeStyle = s.col; cx.lineWidth = 3 - p * 2; cx.beginPath(); cx.arc(0, 0, 18 + p * 6, -1.1, 1.1 * Math.min(1, p * 3 + .3)); cx.stroke(); cx.strokeStyle = '#fff'; cx.lineWidth = 1; cx.stroke(); cx.restore(); }
+  for (const p of parts) { cx.globalAlpha = Math.min(1, p.life / 20); cx.fillStyle = p.col; cx.fillRect(p.x, p.y, p.sz, p.sz); } cx.globalAlpha = 1;
+  for (const x of texts) { cx.globalAlpha = Math.min(1, x.life / 20); txt(x.txt, x.x, x.y, x.col, 'center', x.big ? 14 : 10); } cx.globalAlpha = 1;
+  cx.restore();
+  if (flashA > 0) { cx.fillStyle = flashC; cx.globalAlpha = flashA; cx.fillRect(0, 0, W, H); cx.globalAlpha = 1; }
+  if (linesT > 0) { cx.strokeStyle = `rgba(255,255,255,${Math.min(.7, linesT / 12)})`; cx.lineWidth = 1; for (let i = 0; i < 30; i++) { const ang = i / 30 * 6.283 + Math.sin(i * 12.9) * .1, r1 = 50 + (i * 37) % 40, r2 = 220; cx.beginPath(); cx.moveTo(W / 2 + Math.cos(ang) * r1, H / 2 + Math.sin(ang) * r1); cx.lineTo(W / 2 + Math.cos(ang) * r2, H / 2 + Math.sin(ang) * r2); cx.stroke(); } }
+  if (tension > .02) { const a = Math.min(.85, tension * 1.0 * (.4 + .6 * beatPulse)), g = cx.createRadialGradient(W / 2, H / 2, H * .22, W / 2, H / 2, W * .55); g.addColorStop(0, 'rgba(120,0,25,0)'); g.addColorStop(1, `rgba(150,0,30,${a})`); cx.fillStyle = g; cx.fillRect(0, 0, W, H); cx.fillStyle = `rgba(20,0,10,${tension * .22})`; cx.fillRect(0, 0, W, H); }
+  if (bubble) { const b = bubble, at = b.at || hero, al = Math.max(0, Math.min(1, b.life / 12, (b.max - b.life) / 8 + .05)); cx.font = 'bold 7px ui-monospace,Menlo,monospace'; const w = Math.ceil(cx.measureText(b.txt).width) + 8, h = 13, x = Math.round(Math.max(2, Math.min(W - w - 2, at.x + 12 - w / 2))), y = Math.round(at.y - 62); cx.globalAlpha = al; cx.fillStyle = '#fff'; cx.fillRect(x, y, w, h); cx.fillRect(x + 1, y - 1, w - 2, 1); cx.fillRect(x + 1, y + h, w - 2, 1); cx.fillRect(at.x + 4, y + h + 2, 3, 3); cx.fillRect(at.x + 2, y + h + 6, 2, 2); cx.fillStyle = '#14142b'; cx.textAlign = 'left'; cx.fillText(b.txt, x + 4, y + 9); cx.globalAlpha = 1; }
+  if (fx.fade > 0) { cx.fillStyle = '#000'; cx.globalAlpha = fx.fade; cx.fillRect(0, 0, W, H); cx.globalAlpha = 1; }
+  if (titleText) { const n = titleText.length, sz = Math.max(7, Math.min(15, Math.floor(300 / (n * .62)))); txt(titleText.toUpperCase(), W / 2, 52, '#fff', 'center', sz); txt('- a learning RPG -', W / 2, 66, '#ffc857', 'center', 8); }
+  if (inFight) {
+    const p = hero.shown / hero.max; txt('HP', 8, 9, '#fff', 'left', 7); bar(22, 3, 86, 7, p, p > .5 ? '#2fd38a' : p > .25 ? '#ffc857' : '#ff5c7a');
+    if (mon) { txt(mon.name + (mon.enraged ? ' (ENRAGED)' : ''), W - 8, 9, mon.enraged ? '#ff5c7a' : '#fff', 'right', 7); bar(W - 118, 12, 110, 6, mon.shown / 100, mon.enraged ? '#ff2d55' : mon.boss ? '#ff5c7a' : '#ff9d4a');
+      if (anx.on && PRESSURE) { const pr = Math.max(0, Math.min(1, (performance.now() - anx.chargeFrom) / Math.max(1, anx.nextAtk - anx.chargeFrom))); bar(W - 118, 21, 110, 4, pr, pr > .8 ? '#ff2d55' : '#ffb347'); txt('CHARGE', W - 8, 32, pr > .8 ? '#ff2d55' : '#ffb347', 'right', 6); } }
+  }
+}
+let last = performance.now();
+function frame(now) { const dt = Math.min(3, (now - last) / 16.667); last = now; stepTweens(performance.now()); update(dt, now); render(now); cv.style.borderColor = tension > .1 ? `rgba(255,60,95,${Math.min(1, .5 + beatPulse * .5)})` : ''; requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+/* ================= DOM helpers ================= */
+const panel = $('#panel'), bn = $('#banner');
+const ui = h => { panel.onclick = null; panel.innerHTML = h; window.scrollTo(0, 0); };
+function banner(a, b, ms = 1500) { bn.innerHTML = `<b>${esc(a)}</b>${b ? `<span>${esc(b)}</span>` : ''}`; bn.classList.remove('on'); void bn.offsetWidth; bn.style.animationDuration = Math.max(1, ms * TS) + 'ms'; bn.classList.add('on'); }
+function slideBtn(n) { return n ? `<button class="mini" data-slide="${n}">📄 Slide ${n}</button>` : ''; }
+document.addEventListener('click', e => { const b = e.target.closest('[data-slide]'); if (b) showSlide(+b.dataset.slide); });
+function modal(html) { $('#modal .box').innerHTML = html + '<button class="btn ghost" id="mx">Close</button>'; $('#modal').classList.add('show'); $('#mx').onclick = () => $('#modal').classList.remove('show'); }
+$('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').classList.remove('show'); };
+function showSlide(n) { const s = S.slides.find(x => x.n === n); modal(s ? `<span class="badge">Slide ${s.n}</span><h2>${esc(s.title || '')}</h2>${s.image ? `<img src="${s.image}" alt="">` : ''}<pre>${esc(s.text || '')}</pre>` : '<p>Slide not found.</p>'); }
+function codexModal() { const v = Object.values(G.codex); modal(`<span class="badge">Codex</span><h2>${v.length} concept${v.length === 1 ? '' : 's'} learned</h2>${v.length ? v.map(e => `<div class="entry"><b>${esc(e.t)}</b><br>${esc(e.e)} ${slideBtn(e.s)}</div>`).join('') : '<p class="mut">Defeat monsters to fill your Codex.</p>'}`); }
+function hudDom() {
+  $('#hud').innerHTML = `<span class="pill">${scene.guild ? '🏰 GUILD' : LV[G.lvl] && G.lvl < LV.length ? (LV[G.lvl].game === 'boss' ? '👑 BOSS' : 'FLOOR ' + (G.lvl + 1) + '/' + LV.length) : 'TOWER'}</span><span class="pill" style="color:${RCOL[rank()]}">⚔ ${rank()}-Rank${G.party.length ? ' · 👥' + G.party.length : ''}</span><div class="xpbar"><i style="width:${(G.xp % 150) / 150 * 100}%"></i></div><span class="pill">🔥 ${G.streak}</span><button class="pill" id="cdx">📖 ${Object.keys(G.codex).length}</button><button class="pill" id="mute">${G.muted ? '🔇' : '🔊'}</button>`;
+  $('#cdx').onclick = codexModal; $('#mute').onclick = () => { G.muted = !G.muted; save(); hudDom(); };
+}
+function say(name, text) {
+  return new Promise(res => {
+    ui(`<div class="card dlg pop"><b>${esc(name)}</b><p id="tx"></p><div class="mut">tap to continue ▸</div></div>`);
+    const el = $('#tx'); let i = 0, done = false;
+    master.talk = !!scene.guild && name === (S.npc || 'Grandmaster');
+    const iv = setInterval(() => { i++; el.textContent = text.slice(0, i); if (scene.guild && i % 3 === 0) beep(rnd(190, 260), .03, 'square', .015); if (i >= text.length) { clearInterval(iv); done = true; master.talk = false; } }, Math.max(1, 18 * TS));
+    panel.onclick = () => { if (!done) { clearInterval(iv); el.textContent = text; done = true; master.talk = false; } else { panel.onclick = null; res(); } };
+  });
+}
+function feedback(ok, title, html, slide, label) {
+  return new Promise(res => {
+    panel.insertAdjacentHTML('beforeend', `<div class="fb ${ok ? '' : 'bad'}"><b>${title}</b><div>${html}</div>${slideBtn(slide)}<button class="btn" id="nx" style="background:${ok ? 'var(--good)' : 'var(--bad)'}">${label || 'Continue'}</button></div>`);
+    const n = $('#nx'); n.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); n.onclick = () => res();
+  });
+}
+
+/* ================= combat actions ================= */
+async function dashIn() { hero.state = 'run'; await tween(hero, { x: mon.x - 48 }, 230, easeOut); hero.state = 'atk'; }
+async function dashBack() { hero.state = 'run'; await tween(hero, { x: HEROX }, 200, easeOut); hero.state = 'idle'; hero.sword = -.6; }
+function hitMon(pct, big) {
+  const dmg = Math.round(pct * 9 + rnd(0, 8)) + (big ? 30 : 0);
+  mon.flash = 5; shake = big ? 7 : 4;
+  slashes.push({ x: mon.x + mon.ox - 18 * mon.s, y: mon.y - 26 * mon.s, t: 0, ang: rnd(-.9, -.3), col: big ? '#ffc857' : '#7dd8ff' });
+  burst(mon.x - 8, mon.y - 24 * mon.s, big ? '#ffc857' : mon.col, big ? 18 : 9);
+  texts.push({ x: mon.x - 10, y: mon.y - 48 * mon.s, vy: -.5, life: 55, txt: String(dmg), col: big ? '#ffc857' : '#fff', big });
+  sfx.hit(); mon.hp = Math.max(0, mon.hp - pct); tween(mon, { shown: mon.hp }, 260);
+  tween(mon, { ox: 7 }, 50).then(() => tween(mon, { ox: 0 }, 140));
+}
+async function swing(pct, big) { hero.sword = -1.9; sfx.slash(); const p = tween(hero, { sword: 1.3 }, 130, easeIn); await wait(75); hitMon(pct, big); await p; await wait(60); }
+async function strike(it, pct) {
+  await dashIn();
+  if (it.kind === 'order') {
+    const n = Math.min(it.steps.length, 8);
+    banner(n + '-hit chain', 'Sword skill!', 1100);
+    for (let k = 0; k < n; k++) { await swing(pct / n, k === n - 1); await wait(30); }
+    flashA = .6; flashC = '#fff'; shake = 9;
+  } else await swing(pct, G.streak >= 4);
+  if (G.streak >= 3) texts.push({ x: hero.x + 10, y: hero.y - 52, vy: -.4, life: 60, txt: 'COMBO x' + G.streak, col: '#ffc857' });
+  await dashBack();
+}
+const dist = () => mon.x - (hero.x + 30);
+const LEAD = { slime: 200, wolf: 300, bat: 300, golem: 420, goblin: 260, bandit: 260 };
+const ATK = {
+  async slime(d) { const p = tween(mon, { ox: -d }, 340, easeIn); tween(mon, { oy: -34 }, 170, easeOut).then(() => tween(mon, { oy: 0 }, 170, easeIn)); await p; },
+  async wolf(d) { await tween(mon, { ox: 10 }, 150); const p = tween(mon, { ox: -d }, 250, easeIn); tween(mon, { oy: -26 }, 125, easeOut).then(() => tween(mon, { oy: 0 }, 125, easeIn)); await p; },
+  async bat(d) { await tween(mon, { oy: -22, ox: 10 }, 200, easeOut); const p = tween(mon, { ox: -d }, 230, easeIn); tween(mon, { oy: 8 }, 230, easeIn); await p; },
+  async golem(d) { await tween(mon, { ox: 12 }, 340, easeOut); await tween(mon, { ox: -d }, 160, easeIn); shake = 8; for (let k = 0; k < 14; k++) parts.push({ x: hero.x + 20 + k * 3, y: GY, vx: rnd(-.3, .5), vy: rnd(-1.5, -.4), life: 25, col: '#c9b79c', sz: 2, g: .1 }); },
+  async goblin(d) { await tween(mon, { ox: 8 }, 140); await tween(mon, { ox: -d }, 230, easeIn); },
+  async bandit(d) { await tween(mon, { ox: 8 }, 140); await tween(mon, { ox: -d }, 220, easeIn); }
+};
+async function telegraph(ms) {
+  mon.warn = 1; texts.push({ x: mon.x - 6, y: mon.y - 52 * mon.s, vy: -.3, life: 40, txt: '!', col: '#ff5c7a', big: true });
+  beep(300, .08, 'square', .06); setTimeout(() => beep(420, .1, 'square', .06), 110); await wait(ms); mon.warn = 0;
+}
+async function fireBreath() {
+  await tween(mon, { ox: 8 }, 200, easeOut); sfx.hit();
+  const mx = mon.x + mon.ox - 42 * mon.s, my = mon.y - 50 * mon.s;
+  for (let f = 0; f < 18; f++) { for (let k = 0; k < 4; k++) parts.push({ x: mx + 8, y: my + rnd(-3, 3), vx: -rnd(3, 5), vy: rnd(-.2, .5), life: 26, col: ['#ff9d4a', '#ffd23f', '#ff5c3a'][k % 3], sz: rnd(2, 4), g: 0 }); await wait(32); }
+}
+async function launchOrb(out) {
+  const o = { x: mon.x + mon.ox - 16, y: mon.y - 32 }; orbs.push(o);
+  tween(mon, { ox: 6 }, 180); await wait(220); sfx.slash();
+  if (out === 'dodge') wait(240).then(heroDodge);
+  await tween(o, { x: out === 'dodge' ? -30 : hero.x + 8, y: hero.y - 26 }, out === 'dodge' ? 520 : 300, lin);
+  return o;
+}
+async function heroDodge() {
+  sfx.slash(); texts.push({ x: hero.x, y: hero.y - 46, vy: -.5, life: 45, txt: 'DODGE!', col: '#7dd8ff', big: true });
+  await tween(hero, { ox: -22, hop: 10 }, 110, easeOut); tween(hero, { hop: 0 }, 110, easeIn); await wait(260); await tween(hero, { ox: 0 }, 200, easeOut);
+}
+async function heroParry() {
+  hero.lock = true; hero.sword = -1.6; sfx.slash(); await tween(hero, { sword: .7 }, 100, easeIn);
+  burst(hero.x + 26, hero.y - 24, '#fff6c8', 16, 3.5); slashes.push({ x: hero.x + 26, y: hero.y - 24, t: 0, ang: -.3, col: '#ffc857' });
+  texts.push({ x: hero.x + 10, y: hero.y - 52, vy: -.5, life: 50, txt: 'PARRY!', col: '#ffc857', big: true }); shake = Math.max(shake, 4); sfx.hit(); await wait(140);
+}
+function hurtHero() {
+  hero.hp = Math.max(0, hero.hp - 1); hero.flash = 7; shake = 7; flashC = '#ff2d55'; flashA = .35;
+  burst(hero.x, hero.y - 22, '#ff5c7a', 14); texts.push({ x: hero.x, y: hero.y - 46, vy: -.5, life: 55, txt: '-' + Math.round(100 / hero.max) + '%', col: '#ff5c7a' });
+  sfx.hit(); tween(hero, { shown: hero.hp }, 300); tween(hero, { ox: -10 }, 60).then(() => tween(hero, { ox: 0 }, 200));
+}
+async function monAttack(blk, out = 'hit', quick = false) {
+  if (!mon) return;
+  const k = mon.type, ranged = k === 'wraith' || k === 'dragon', d = dist() - (blk ? 22 : 0);
+  if (k === 'dragon' && out === 'parry') out = 'dodge';
+  mon.state = 'atk'; await telegraph(quick ? 260 : out === 'hit' ? 520 : 400);
+  if (blk) { blk.busy = true; tween(blk, { x: HEROX + 34, y: GY + 2 }, 150, easeOut); }
+  let orb = null, pre = null;
+  if (!ranged && out === 'dodge') pre = wait(LEAD[k] || 250).then(heroDodge);
+  if (!ranged && out === 'parry') pre = wait(LEAD[k] || 250).then(() => heroParry());
+  if (k === 'dragon') { if (out === 'dodge') pre = wait(500).then(heroDodge); await fireBreath(); }
+  else if (k === 'wraith') orb = await launchOrb(out);
+  else await ATK[k](d);
+  if (pre) await pre;
+  if (out === 'hit') {
+    if (orb) { orbs.splice(orbs.indexOf(orb), 1); burst(orb.x, orb.y, '#b58cff', 14, 3); orb = null; }
+    if (blk) {
+      blk.flash = 6; shake = 6; burst(blk.x + 10, blk.y - 22, '#ffe29a', 16, 3); texts.push({ x: blk.x + 4, y: blk.y - 48, vy: -.5, life: 55, txt: 'CLANG!', col: '#ffe29a', big: true });
+      sfx.hit(); tween(blk, { ox: -6 }, 50).then(() => tween(blk, { ox: 0 }, 160));
+    } else hurtHero();
+  } else if (out === 'parry' && orb) {
+    await heroParry(); await tween(orb, { x: mon.x + mon.ox - 10, y: mon.y - 24 * mon.s }, 260);
+    orbs.splice(orbs.indexOf(orb), 1); mon.flash = 5; burst(orb.x, orb.y, '#b58cff', 12, 3); sfx.hit(); orb = null;
+  } else if (out === 'parry') tween(mon, { ox: mon.ox + 16 }, 90);
+  if (orb && orbs.includes(orb)) orbs.splice(orbs.indexOf(orb), 1);
+  await wait(160); hero.lock = false;
+  await tween(mon, { ox: 0, oy: 0 }, 300, easeOut);
+  if (Math.abs(hero.ox) > .5) await tween(hero, { ox: 0 }, 100);
+  if (blk) blk.busy = false;
+  mon.state = 'idle';
+}
+async function idleAttack(out) {
+  if (!mon || !anx.on) return;
+  if (out === 'hit' && hero.hp <= 1) out = 'parry';          // mercy: waiting never kills you
+  let blk = null;
+  if (out === 'hit') { const b = allyById('brock'); if (b && !blockUsed) { blk = b; blockUsed = true; } }
+  await monAttack(blk, out);
+  hero.lock = false; anx.chargeFrom = performance.now(); tension = Math.min(1, tension + .2);
+  if (out === 'hit' && !blk) bubble = { txt: 'Ouch!!', life: 70, max: 70 };
+}
+async function enrage() {
+  mon.enraged = true; speedLines(40); shake = 10; flashC = '#ff2d55'; flashA = .45; sfx.hit();
+  banner('Enraged!', mon.name + ' roars', 1500); burst(mon.x, mon.y - 40, '#ff5c3a', 30, 4);
+  const who = S.bossName || 'The Warden', dn = allies.find(a => a.down), L = [[who, 'Enough! You will not leave this place!', 'x']];
+  if (dn) {
+    const d = PARTY[dn.id];
+    L.push(['???', 'Not so fast...', 'x'], ['You', d.name + '!?'], [d.name, dn.id === 'brock' ? "You think I'd miss the finale? Don't die on me, rookie." : dn.id === 'mira' ? "You didn't think I'd let you have all the fun?" : "I won't let anyone fall. Not while I can still stand."]);
+  } else if (live().length) L.push([PARTY[live()[0].id].name, "Hold on! It's getting serious!"]);
+  await playLines(L);
+  if (dn) { dn.down = false; G.down = null; save(); burst(dn.x, dn.y - 24, PARTY[dn.id].trim, 26, 3.5); sfx.lvl(); hero.hp = Math.min(hero.max, hero.hp + 1); tween(hero, { shown: hero.hp }, 300); banner(PARTY[dn.id].name + ' is back!', 'Party restored · +1 heart', 1500); await wait(900); }
+  anx.nextAtk = performance.now() + 4000;
+}
+async function allyShoot(a) {
+  if (!mon) return;
+  const tx = mon.x - 10, ty = mon.y - 24 * mon.s, ar = { x: a.x + 12, y: a.y - 22 };
+  tween(a, { ox: -3 }, 60).then(() => tween(a, { ox: 0 }, 140)); arrows.push(ar);
+  await tween(ar, { x: tx, y: ty }, 280, lin); arrows.splice(arrows.indexOf(ar), 1);
+  if (mon) { mon.flash = 3; burst(ar.x, ar.y, '#ffe29a', 6); sfx.hit(); }
+}
+async function allyHeal(a) {
+  tween(a, { hop: 8 }, 150, easeOut).then(() => tween(a, { hop: 0 }, 150, easeIn));
+  for (let k = 0; k < 14; k++) parts.push({ x: hero.x + rnd(-8, 8), y: hero.y - rnd(0, 30), vx: 0, vy: rnd(-.5, -1.2), life: 40, col: '#7dffd9', sz: 2, g: -.01 });
+  hero.hp = Math.min(hero.max, hero.hp + 1); tween(hero, { shown: hero.hp }, 400);
+  texts.push({ x: hero.x, y: hero.y - 46, vy: -.5, life: 55, txt: '+1 HP', col: '#7dffd9' }); sfx.ok(); banner(PARTY[a.id].name + ' heals you', '+1 heart', 1000);
+  await wait(500);
+}
+async function partyCombo() {
+  speedLines(45); banner('Party combo!', live().map(a => PARTY[a.id].name).join(' · '), 1300); sfx.lvl();
+  const p = Math.max(0, Math.min(3, (mon.hp - 5) / 3));
+  for (const a of live()) { tween(a, { hop: 10 }, 120, easeOut).then(() => tween(a, { hop: 0 }, 120, easeIn)); burst(a.x, a.y - 24, PARTY[a.id].trim, 12, 3); await wait(150); if (mon) hitMon(p, true); }
+  G.xp += 25; hudDom(); flashC = '#fff'; flashA = .5; await wait(300);
+}
+const speedLines = f => { linesT = f; };
+async function spawn(l) {
+  const boss = l.game === 'boss', type = l.monster, pal = PAL[type], pick = pal[Math.max(0, LV.indexOf(l)) % pal.length];
+  mon = { type, x: boss ? 232 : W + 50, y: boss ? GY - 130 : GY, s: boss ? 1.5 : type === 'golem' ? 1.15 : 1, ox: 0, oy: 0, warn: 0, enraged: false, alpha: 1, flash: 0, hp: 100, shown: 100, col: pick[0], col2: pick[1], name: String(l.enemy || l.title).slice(0, 24), boss };
+  if (boss) { await tween(mon, { y: GY }, 520, easeIn); shake = 10; burst(mon.x, GY, '#bbb', 22); sfx.hit(); } else await tween(mon, { x: 238 }, 600, easeOut);
+}
+async function monDie() {
+  tween(mon, { shown: 0 }, 250);
+  for (let k = 0; k < 3; k++) { burst(mon.x, mon.y - 20 * mon.s, mon.col, 16, 3.5); await wait(80); }
+  sfx.win(); await tween(mon, { alpha: 0 }, 500); mon = null;
+}
+async function heroCheer() { hero.state = 'cheer'; hero.sword = -1.5; await tween(hero, { hop: 10 }, 160, easeOut); await tween(hero, { hop: 0 }, 160, easeIn); }
+async function heroDie() {
+  hero.state = 'dead'; sfx.no(); await tween(hero, { dead: 1 }, 500); await wait(300); banner('Defeated', 'You fell...', 1400);
+  await new Promise(res => { ui(`<div class="card pop"><h1>💀 Defeated</h1><p>No stress. Every mistake is saved to your review sheet. Read the explanations, then go again.</p><button class="btn" id="go">Respawn and retry</button></div>`); $('#go').onclick = res; });
+  hero.dead = 0; hero.state = 'idle'; hero.sword = -.6;
+}
+
+/* ================= question UIs (panel) ================= */
+function ask(it) { return new Promise(res => ({ quiz: qQuiz, order: qOrder, sort: qSort })[it.kind](it, res)); }
+function qQuiz(it, res) {
+  const idx = shuffle(it.options.map((_, k) => k)), can50 = !it.boss && G.fifty > 0 && it.options.length > 2;
+  ui(`<div class="card pop"><span class="badge">${esc(it._lvl || GAMELABEL[it.boss ? 'boss' : 'quiz'])}</span><h2>${esc(it.q)}</h2><div>${idx.map(k => `<button class="opt" data-k="${k}">${esc(it.options[k])}</button>`).join('')}</div>${can50 ? `<button class="mini" id="f50">✂️ 50/50 (${G.fifty})</button>` : ''}</div>`);
+  if (can50) $('#f50').onclick = e => { G.fifty--; save(); e.target.remove(); shuffle(idx.filter(k => k !== it.answer)).slice(0, it.options.length - 2).forEach(k => $(`.opt[data-k="${k}"]`).classList.add('gone')); };
+  document.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    const k = +b.dataset.k, ok = k === it.answer;
+    document.querySelectorAll('.opt').forEach(x => x.style.pointerEvents = 'none');
+    b.classList.add(ok ? 'good' : 'bad'); if (!ok) $(`.opt[data-k="${it.answer}"]`).classList.add('good');
+    res({ ok, correctText: esc(it.options[it.answer]) });
+  });
+}
+function qOrder(it, res) {
+  const pool = shuffle(it.steps.map((t, k) => ({ t, k }))); const placed = [];
+  const draw = () => {
+    ui(`<div class="card pop"><span class="badge">Sword skill</span><h2>${esc(it.prompt)}</h2><p class="mut">Tap the steps in the right order to charge the skill. Tap a placed step to remove it.</p><div>${it.steps.map((_, p) => placed[p] ? `<div class="slot filled" data-p="${p}"><b>${p + 1}</b><span>${esc(placed[p].t)}</span></div>` : `<div class="slot"><b>${p + 1}</b></div>`).join('')}</div><div class="chips">${pool.map(c => `<button class="chip ${placed.includes(c) ? 'used' : ''}" data-k="${c.k}">${esc(c.t)}</button>`).join('')}</div><button class="btn" id="chk" ${placed.length < it.steps.length ? 'disabled' : ''}>Unleash skill</button></div>`);
+    document.querySelectorAll('.chip').forEach(b => b.onclick = () => { placed.push(pool.find(c => c.k == b.dataset.k)); draw(); });
+    document.querySelectorAll('.slot.filled').forEach(b => b.onclick = () => { placed.splice(+b.dataset.p, 1); draw(); });
+    $('#chk').onclick = () => {
+      let ok = true;
+      document.querySelectorAll('.slot').forEach((el, p) => { const g = placed[p].k === p; if (!g) ok = false; el.classList.add(g ? 'good' : 'bad'); el.style.pointerEvents = 'none'; });
+      $('#chk').remove(); document.querySelectorAll('.chip').forEach(x => x.style.pointerEvents = 'none');
+      res({ ok, correctText: ok ? '' : '<ol style="margin:6px 0;padding-left:20px">' + it.steps.map(s => `<li>${esc(s)}</li>`).join('') + '</ol>' });
+    };
+  };
+  draw();
+}
+function qSort(it, res) {
+  const cats = it.cats;
+  ui(`<div class="card pop"><span class="badge">Weak point</span><p class="mut">${esc(it.lp || 'Which group does this belong to?')}</p><div class="sortcard">${esc(it.text)}</div><div class="cats c${Math.min(cats.length, 4)}">${cats.map((c, k) => `<button class="cat" data-k="${k}">${esc(c)}</button>`).join('')}</div></div>`);
+  document.querySelectorAll('.cat').forEach(b => b.onclick = () => {
+    const k = +b.dataset.k, ok = k === it.category;
+    document.querySelectorAll('.cat').forEach(x => x.style.pointerEvents = 'none');
+    b.classList.add(ok ? 'good' : 'bad'); if (!ok) document.querySelector(`.cat[data-k="${it.category}"]`).classList.add('good');
+    res({ ok, correctText: esc(cats[it.category]) });
+  });
+}
+
+/* ================= game flow ================= */
+const keyOf = it => String(it.q || it.prompt || it.text);
+async function fight(l, i, boss) {
+  let items = l.items.map((it, k) => Object.assign({}, it, { _id: i + ':' + k, kind: boss ? 'quiz' : l.game, cats: l.categories, lp: l.prompt, boss }));
+  if (boss) items = shuffle(items).slice(0, Math.min(S.bossCount || 8, items.length)); else if (l.game !== 'order') items = shuffle(items);
+  const wOf = it => it.kind === 'order' ? 3 : 1, totalW = items.reduce((a, it) => a + wOf(it), 0), queue = items.slice();
+  let right = 0, wrong = 0; blockUsed = false;
+  while (queue.length) {
+    if (boss && mon && !mon.enraged && mon.hp <= 55) await enrage();
+    const it = queue[0], t0 = Date.now();
+    hero.state = 'tense'; anx.on = true; anx.t0 = performance.now(); anx.nextThought = anx.t0 + 2200; anx.nextBeat = anx.t0 + 1800; anx.nextGrowl = anx.t0 + 6000; anx.nextAtk = anx.t0 + (mon && (mon.boss || mon.enraged) ? 7000 : 9000); anx.chargeFrom = anx.t0; anx.atkN = 0;
+    const a = await ask(it);
+    anx.on = false; if (atkP) await atkP;
+    hero.state = 'idle'; hero.sword = -.6; bubble = { txt: a.ok ? 'Yes!' : 'Ugh!', life: 70, max: 70 };
+    await tween(mon, { ox: 0, oy: 0 }, 120);
+    if (a.ok) {
+      queue.shift(); right++; G.streak++;
+      const gain = 10 + Math.min(G.streak, 5) * 2 + ((Date.now() - t0) / 1000 < 8 ? 5 : 0), before = heroLv();
+      G.xp += gain; G.codex[keyOf(it)] = { t: keyOf(it), e: it.explain || '', s: it.slide }; sfx.ok(); save(); hudDom();
+      const ar = allyById('mira'); if (ar) { allyShoot(ar); if (G.streak >= 2) G.xp += 5; }
+      await strike(it, 100 * wOf(it) / totalW);
+      if (G.streak >= 5 && G.streak % 5 === 0 && live().length && queue.length) await partyCombo();
+      const ly = allyById('lyra'); if (ly && G.streak % 3 === 0 && hero.hp < hero.max && queue.length) await allyHeal(ly);
+      if (queue.length) await monAttack(null, Math.random() < .55 ? 'parry' : 'dodge', true);
+      if (heroLv() > before) { banner('Level up!', 'Lv ' + heroLv(), 1400); burst(hero.x, hero.y - 20, '#ffc857', 26, 3); sfx.lvl(); }
+      if (!queue.length) { await monDie(); heroCheer(); }
+      await feedback(true, `✅ Hit! +${gain} XP · added to Codex`, esc(it.explain || ''), it.slide);
+    } else {
+      G.streak = 0; wrong++; queue.shift(); queue.splice(Math.min(2, queue.length), 0, it);
+      const m = G.missed[keyOf(it)] || { text: keyOf(it), slide: it.slide, explain: it.explain || '', n: 0 }; m.n++; G.missed[keyOf(it)] = m; save(); hudDom();
+      const blk = allyById('brock'), canBlock = blk && !blockUsed; if (canBlock) blockUsed = true;
+      await monAttack(canBlock ? blk : null);
+      if (!canBlock && hero.hp <= 0) { await heroDie(); return 'dead'; }
+      await feedback(false, canBlock ? '🛡 Brock blocked the hit!' : '❌ You got hit', `${a.correctText ? `<p><b>Answer:</b> ${a.correctText}</p>` : ''}${esc(it.explain || '')}`, it.slide, 'Back to battle');
+    }
+  }
+  return { right, wrong };
+}
+async function enterGuild() {
+  scene.guild = true; scene.noteTaken = false; scene.tower = false; scene.speed = 0; inFight = false; mon = null; titleText = null; anx.on = false; tension = 0; bubble = null;
+  hero.y = HY_G; hero.x = -20; allies.forEach((a, k) => { a.x = -44 - k * 24; a.y = HY_G; a.ox = 0; a.hop = 0; }); hero.ox = 0; hero.hop = 0; hero.state = 'run'; hero.sword = -.6; hero.dead = 0;
+  fx.fade = 1; hudDom();
+  ui(`<div class="card dlg pop"><b>Adventurers Guild</b><p class="mut">Pushing open the heavy door…</p></div>`);
+  tween(fx, { fade: 0 }, 500);
+  banner('Adventurers Guild', 'Contract hall', 1600);
+  await tween(hero, { x: 104 }, 1100, easeOut); hero.state = 'idle'; await wait(350);
+}
+function contract(l, i, boss) {
+  return new Promise(res => {
+    const sk = Math.max(1, Math.min(5, Math.ceil(l.items.length / 2)));
+    ui(`<div class="scroll pop"><div class="sc-h">GUILD CONTRACT No. ${String(i + 1).padStart(3, '0')}</div><h2>${esc(l.title)}</h2><div class="sc-r"><span>Target</span><b>${esc(l.enemy || l.title)}</b></div><div class="sc-r"><span>Location</span><b>${boss ? 'The Summit' : 'Floor ' + (i + 1)}</b></div><div class="sc-r"><span>Danger</span><b>${'💀'.repeat(sk)}</b></div><div class="sc-r"><span>Rival</span><b>Kael · ${GRANKS[rivalIdx()]}-Rank</b></div><div class="sc-r"><span>Reward</span><b>XP · Codex · Rank</b></div><div class="stamp" id="stp">ACCEPTED</div><button class="btn" id="acc">Accept contract</button></div>`);
+    $('#acc').onclick = () => { $('#acc').disabled = true; $('#stp').classList.add('on'); sfx.stamp(); wait(900).then(res); };
+  });
+}
+async function promote(to) {
+  const from = G.rank; G.rank = to; save(); hudDom(); sfx.lvl(); speedLines(40); burst(hero.x, hero.y - 24, RCOL[GRANKS[to]], 30, 3.5); flashC = RCOL[GRANKS[to]]; flashA = .4;
+  banner('Rank up!', GRANKS[to] + '-Rank ' + RTITLE[GRANKS[to]], 1600);
+  await new Promise(res => {
+    ui(`<div class="gcard pop"><div class="tt">GUILD PROMOTION</div><div class="gl"><span class="old" style="color:${RCOL[GRANKS[from]]}">${GRANKS[from]}</span><span class="new" style="color:${RCOL[GRANKS[to]]}">${GRANKS[to]}</span></div><h2 style="margin:4px 0">${GRANKS[to]}-Rank ${RTITLE[GRANKS[to]]}</h2><p class="mut">${GRANKS[from]}-Rank → ${GRANKS[to]}-Rank</p><button class="btn" id="go">Accept the guild card</button></div>`);
+    $('#go').onclick = res;
+  });
+}
+async function guildScene(i, l, boss) {
+  await enterGuild();
+  const who = S.npc || 'Grandmaster', rk = `${rank()}-Rank ${rankName()}`, rv = `${GRANKS[rivalIdx()]}-Rank`;
+  await say(who, i === 0 ? `So. Another one comes to climb the Tower. ${rk}. Hm. Come closer.` : [`You return alive. The Tower has taken note of you, ${rk}.`, 'Back so soon? Good. The Guild keeps count of those who come back.', 'Sit. Breathe. The next contract will not be kind.'][i % 3]);
+  const tgt = targetRank();
+  if (i > 0 && tgt > G.rank) {
+    await say(who, 'You cleared the last contract. The Guild does not forget that. Step forward. Your rank review is complete.');
+    await promote(tgt);
+    await say(who, `${RTITLE[GRANKS[tgt]]}. Wear it well. Now, to the next contract.`);
+  } else if (i > 0) {
+    const ls = G.stats[i - 1];
+    if (ls && ls.right / (ls.right + ls.wrong) < .7) await say(who, 'You won. But sloppily. The Guild promotes the precise, not the lucky. No promotion this time.');
+  }
+  if (G.down && boss) await say(who, `${PARTY[G.down].name} is resting on the bench by the fire. Do not let that sacrifice be wasted.`);
+  await playLines(i === 0 ? [['Kael', "Tch. Another F-rank rookie. Don't expect me to carry you."], ['You', 'I never asked you to.']]
+    : boss ? [['Kael', "The Warden's contract...? Tch. You'd better not fail. If you do, I'm taking it."]]
+    : [['Kael', [`${rank()}-Rank already? Hmph. I'm ${rv}. Try to keep up.`, "You're still alive? ...Interesting.", `A party, huh? Heh. Don't get cocky. I'm still ${rv}.`][(i - 1) % 3]]]);
+  const lines = [];
+  if (boss) lines.push('This is the contract no one wants. The Warden waits at the summit. Take your time. Then do not waste it.');
+  lines.push(l.quest || autoQuest(l));
+  lines.push(`Target: ${l.enemy || l.title}. It strikes the moment you hesitate. Read the question twice, then trust yourself.`);
+  for (const t of lines) await say(who, t);
+  await contract(l, i, boss);
+  scene.noteTaken = true; burst(66, 54, '#ffc857', 22, 2.5); sfx.lvl(); heroCheer();
+  await wait(800); await tween(fx, { fade: 1 }, 450);
+}
+async function epilogue() {
+  const acc = overallAcc(), who = S.npc || 'Grandmaster';
+  await enterGuild();
+  await say(who, 'The Warden is down. For the first time in years, the Tower is quiet.');
+  const tgt = acc >= 85 ? 6 : 5;
+  if (tgt > G.rank) {
+    await say(who, acc >= 85 ? `${acc}%. That is not luck. That is understanding. Step forward. By the authority of the Guild...` : `You reached the summit, and that counts. ${acc}%... close. Step forward.`);
+    await promote(tgt);
+    await say(who, tgt === 6 ? 'S-Rank. Only a handful have ever worn it. Wear it well.' : 'A-Rank. S is for those who do not stumble. Study what you missed, then come back and take it.');
+  }
+  await say('Kael', G.rank >= 6 ? "S-Rank...? You overtook me. Tch. Next time, I won't lose." : "A-Rank. Same as me. We'll settle this next time.");
+  for (const a of allies.slice(0, 3)) await say(PARTY[a.id].name, FINAL[a.id]);
+}
+
+/* ---------- story scenes: rescues, rivals, party ---------- */
+function stageGuest(sc) {
+  const g = makeAlly(sc.ally);
+  if (sc.kind === 'rival') { g.x = 165; g.y = GY + 8; g.front = true; } else { g.x = 292; g.y = GY; g.captive = true; g.rope = sc.kind === 'rope'; g.cage = sc.kind === 'cage'; g.kneel = sc.kind === 'rope'; }
+  guest = g; guestCry = performance.now() + 2500;
+}
+async function playLines(lines) { for (const [n, t, tag] of lines) { if (tag === 'x') { speedLines(45); shake = 5; } await say(n, t); } }
+async function storyPre(sc) { speedLines(35); banner('!!', 'Something is wrong...', 1200); await wait(500); await playLines(sc.pre()); }
+async function storyPost(sc) {
+  const g = guest; if (!g) return;
+  if (g.captive) { g.rope = false; g.cage = false; g.kneel = false; g.captive = false; burst(g.x, g.y - 20, '#ffe29a', 22, 3); sfx.lvl(); await tween(g, { x: HEROX + 40, y: GY + 4 }, 800, easeOut); }
+  else await tween(g, { x: HEROX + 40 }, 500, easeOut);
+  await playLines(sc.post());
+  await joinParty(g);
+}
+function joinParty(g) {
+  const d = PARTY[g.id]; G.party.push(g.id); save(); allies.push(g); guest = null; g.front = false; g.captive = false;
+  hudDom(); sfx.lvl(); banner('Party joined!', d.name + ' the ' + d.role, 1600); burst(g.x, g.y - 24, d.trim, 24, 3);
+  return new Promise(res => { ui(`<div class="card pop" style="text-align:center"><span class="badge">New party member</span><h1>${d.icon} ${d.name}</h1><p><b>${d.role}</b></p><p>${d.perk}</p><button class="btn" id="go">Welcome to the party</button></div>`); $('#go').onclick = res; });
+}
+async function fallScene() {
+  const v = allyById('brock') || live()[0], d = PARTY[v.id];
+  speedLines(40); flashC = '#ff2d55'; flashA = .5; shake = 9; sfx.hit();
+  banner('Ambush!', 'Something strikes from the dark...', 1400); await wait(700);
+  v.down = true; G.down = v.id; save(); burst(v.x, v.y - 20, '#ff5c7a', 20, 3);
+  const L = [[d.name, d.fall[0], 'x'], ['You', d.name + '!', 'x'], [d.name, d.fall[1]], ['You', "I'm not leaving anyone behind!"], [d.name, '...Idiot. Then win. Win for all of us.']];
+  const o = live()[0]; if (o) L.push([PARTY[o.id].name, `We'll finish this for ${d.name}. Come on.`]);
+  await playLines(L);
+}
+async function bossRally() {
+  if (!live().length) return;
+  const L = [];
+  if (hasA('mira')) L.push(['Mira', 'So this is it... the top of the Tower.']);
+  if (hasA('brock')) L.push(['Brock', 'Tch. Scared? Good. It keeps you sharp.']);
+  if (hasA('lyra')) L.push(['Lyra', "I'll heal whatever I can. Just don't give up."]);
+  L.push(['You', "We didn't come this far to lose. Let's finish this together!", 'x'], ['Party', 'Right! Together!', 'x']);
+  speedLines(30); await playLines(L);
+}
+const autoQuest = l => `A ${l.enemy || 'monster'} blocks the stairs to the next floor. Prove you understand ${l.title} and it falls. Get it wrong and it strikes back.`;
+async function floor(i, intro) {
+  const l = LV[i], boss = l.game === 'boss';
+  G.lvl = i; save(); scene.theme = boss ? 6 : i % 6; scene.tower = false; inFight = false; mon = null; titleText = null; hudDom();
+  hero.max = hero.hp = boss ? 3 : 4; hero.shown = hero.hp; hero.x = HEROX; hero.y = GY; hero.ox = 0; hero.dead = 0; hero.sword = -.6; hero.hop = 0; scene.guild = false; if (intro) guest = null;
+  if (intro) {
+    await guildScene(i, l, boss);
+    scene.guild = false; scene.theme = boss ? 6 : i % 6; hero.y = GY; hero.x = HEROX; hero.state = 'run'; scene.speed = 2.4; hudDom();
+    ui(`<div class="card dlg pop"><b>Climbing…</b><p class="mut">${boss ? 'The summit' : 'Floor ' + (i + 1) + ' of ' + LV.length}</p></div>`);
+    tween(fx, { fade: 0 }, 500);
+    banner(boss ? 'Boss floor' : 'Floor ' + (i + 1), l.title, 1700); await wait(1700);
+    scene.speed = 0; hero.state = 'idle';
+  } else { hero.state = 'idle'; scene.speed = 0; fx.fade = 0; }
+  const sc = l.story && !G.party.includes(l.story.ally) ? l.story : null;
+  if (intro && sc) stageGuest(sc);
+  await spawn(l);
+  if (intro && sc) await storyPre(sc);
+  if (intro && boss) await bossRally();
+  inFight = true; banner(boss ? 'Boss' : 'Encounter', mon.name, 1200); await wait(900);
+  const r = await fight(l, i, boss);
+  if (r !== 'dead' && sc) await storyPost(sc);
+  if (r !== 'dead' && !boss && i === LV.length - 2 && LV[LV.length - 1].game === 'boss' && live().length && !G.down) await fallScene();
+  return r;
+}
+function cleared(i, r) {
+  const acc = r.right / (r.right + r.wrong), stars = acc >= .85 ? 3 : acc >= .6 ? 2 : 1, bonus = stars * 25;
+  G.xp += bonus; G.stats[i] = { title: LV[i].title, right: r.right, wrong: r.wrong }; G.lvl = i + 1; G.streak = G.streak; save(); hudDom();
+  const last = G.lvl >= LV.length;
+  return new Promise(res => {
+    ui(`<div class="card pop"><div class="stars">${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><h1 style="text-align:center">${LV[i].game === 'boss' ? 'Boss defeated!' : 'Floor cleared!'}</h1><p style="text-align:center">${Math.round(acc * 100)}% accuracy · +${bonus} XP · Codex ${Object.keys(G.codex).length}</p><div class="dots">${LV.map((_, k) => `<i class="${k <= i ? 'd' : ''}"></i>`).join('')}</div><button class="btn" id="go">${last ? 'Report to the Grandmaster' : 'Return to the guild'}</button></div>`);
+    $('#go').onclick = () => res();
+  });
+}
+async function run(from) {
+  for (let i = from; i < LV.length; i++) { let r, first = true; do { r = await floor(i, first); first = false; } while (r === 'dead'); await cleared(i, r); }
+  await epilogue();
+  report();
+}
+function report() {
+  inFight = false; mon = null; scene.theme = 6; scene.speed = 0; hero.state = 'idle'; hudDom(); heroCheer(); sfx.win();
+  for (let k = 0; k < 6; k++) setTimeout(() => burst(rnd(40, 280), rnd(30, 90), ['#ffc857', '#59c8ff', '#ff6bd6', '#2fd38a'][k % 4], 18, 3), k * 220 * TS);
+  const st = G.stats.filter(Boolean), R = st.reduce((a, s) => a + s.right, 0), Wr = st.reduce((a, s) => a + s.wrong, 0), acc = Math.round(100 * R / Math.max(1, R + Wr));
+  const weak = Object.values(G.missed).sort((a, b) => b.n - a.n);
+  const sheet = `${S.title}: review sheet\n\n` + (weak.length ? weak.map((m, k) => `${k + 1}. ${m.text}\n   → ${m.explain || ''}${m.slide ? ` (Slide ${m.slide})` : ''}`).join('\n\n') : 'Nothing missed. Flawless.');
+  ui(`<div class="card pop"><span class="badge">Tower cleared</span><h1>${acc >= 85 ? '🏆 Mastered' : acc >= 60 ? '👍 Solid' : '📚 Keep climbing'}</h1><p>${rank()}-Rank ${rankName()} · Lv ${heroLv()} · ⚡ ${G.xp} XP · ${acc}% accuracy · Codex ${Object.keys(G.codex).length} · ${weak.length} to review</p>${st.map(s => { const p = Math.round(100 * s.right / (s.right + s.wrong)); return `<div class="lv"><span>${esc(s.title)}</span><span>${p}%</span></div><div class="bar"><i style="width:${p}%"></i></div>`; }).join('')}</div>
+  <div class="card"><h2>Review these</h2>${weak.length ? weak.map(m => `<div class="entry weak"><b>${esc(m.text)}</b><br>${esc(m.explain)} ${slideBtn(m.slide)}<br><span class="mut">missed ${m.n}×</span></div>`).join('') : '<p>Nothing missed. Flawless.</p>'}<button class="btn ghost" id="cp">Copy review sheet</button></div><button class="btn" id="re">Play again</button>`);
+  $('#cp').onclick = () => { try { navigator.clipboard.writeText(sheet); $('#cp').textContent = 'Copied ✓'; } catch (e) { $('#cp').textContent = 'Copy failed'; } };
+  $('#re').onclick = () => { G = fresh(); save(); title(); };
+}
+function title() {
+  inFight = false; mon = null; scene.theme = 0; scene.tower = true; scene.guild = false; hero.y = GY; fx.fade = 0; scene.speed = .4; syncAllies(); hero.state = 'idle'; hero.x = HEROX; hero.dead = 0; hero.ox = 0; hero.sword = -.6; hero.hop = 0; titleText = S.title;
+  const saved = G.lvl > 0 && G.lvl < LV.length; hudDom();
+  ui(`<div class="card pop"><div class="mut" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#ffc857">THE CARPE DIEM GAMING EXPERIENCE · <i>The Beauty in the Gnarly</i></div><span class="badge">Learning RPG</span><h1>${esc(S.title)}</h1><p>${esc(S.story || 'Climb the tower. Every floor is guarded by monsters that only fall to real knowledge.')}</p><p class="mut">${LV.length} floors · ${LV.reduce((a, l) => a + l.items.length, 0)} challenges</p>${saved ? `<button class="btn" id="go">Continue (Floor ${G.lvl + 1})</button><button class="btn ghost" id="new">Start over</button>` : `<button class="btn" id="go">Enter the tower</button>`}<p class="mut" style="font-size:11px;margin-top:10px">Powered by Kingfahd Pappoe</p></div>`);
+  const begin = from => { titleText = null; scene.tower = false; scene.speed = 0; run(from); };
+  $('#go').onclick = () => begin(saved ? G.lvl : 0);
+  if ($('#new')) $('#new').onclick = () => { G = fresh(); save(); syncAllies(); begin(0); };
+}
+if (/debug/.test(location.hash)) window.__dbg = { hero, scene, LV, G: () => G, get mon() { return mon; }, monAttack, spawn, enrage, set inFight(v) { inFight = v; } };
+title();
+})();
+</script>
+</body>
+</html>
