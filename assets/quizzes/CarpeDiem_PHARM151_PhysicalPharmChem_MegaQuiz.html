@@ -116,7 +116,7 @@ button{font-family:inherit;cursor:pointer}
   <div class="sub" id="quizSub">Timed practice — one question per page</div>
 </div>
 
-<div class="timerbar" id="timerbar">
+<div class="timerbar" id="timerbar" style="display:none">
   <span class="tt">Time left</span><span class="td" id="td">2:00:00</span>
   <button class="hide" id="hideBtn" onclick="toggleTimer()">Hide</button>
 </div>
@@ -124,9 +124,9 @@ button{font-family:inherit;cursor:pointer}
 <div class="wrap" id="wrap">
   <div class="start" id="start">
     <h2>Choose your set</h2>
-    <p>Pick a version, then start the timer. Answers save as you go.</p>
+    <p>Pick a set, then choose a timed exam or open practice. Answers save as you go.</p>
     <div class="mods" id="mods"></div>
-    <button class="bigbtn" id="startBtn" onclick="begin()">Start attempt</button>
+    <div id="startBtns"></div>
   </div>
   <div id="exam" style="display:none"></div>
   <div id="results" style="display:none"></div>
@@ -138,9 +138,11 @@ let mod = BANK.modules[0].id;
 let list = [];
 let idx = 0;
 let ans = {};
-let secs = 7200;
+let secs = 0;
 let tick = null;
 let done = false;
+const PER_Q = 90;
+const EXAM_N = 40;
 
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
@@ -149,28 +151,48 @@ function drawMods(){
     return '<button class="modbtn'+(m.id===mod?' sel':'')+'" onclick="pick(\''+m.id+'\')">'+
       '<b>'+esc(m.name)+'</b><span>'+esc(m.desc)+' - '+m.count+' questions</span></button>';
   }).join('');
+  var m=BANK.modules.filter(function(x){return x.id===mod})[0];
+  var all=BANK.questions.filter(function(q){return q.module===mod});
+  var n=Math.min(EXAM_N, all.length);
+  var mins=Math.round(n*PER_Q/60);
+  document.getElementById('td').textContent=fmt(n*PER_Q);
+  var el=document.getElementById('startBtns');
+  if(el){
+    el.innerHTML='<button class="bigbtn" onclick="begin(\'exam\')">Start exam - '+n+' questions / '+mins+' min</button>'+
+      '<button class="bigbtn" style="background:#1d3557;margin-top:10px" onclick="begin(\'practice\')">Practice all '+all.length+' questions - no timer</button>';
+  }
 }
 function pick(id){ mod=id; drawMods(); }
 
-function begin(){
-  list = BANK.questions.filter(function(q){return q.module===mod});
-  if(!list.length){alert('No questions in this set');return}
-  idx=0; ans={}; secs=7200; done=false;
+function fmt(s){var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),x=s%60;
+  return (h>0?h+':':'')+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0')}
+
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+
+function begin(mode){
+  var all=BANK.questions.filter(function(q){return q.module===mod});
+  if(!all.length){alert('No questions in this set');return}
+  if(mode==='exam'){ list=shuffle(all.slice()).slice(0,Math.min(EXAM_N,all.length)); secs=list.length*PER_Q; }
+  else { list=all.slice(); secs=0; }
+  idx=0; ans={}; done=false;
   document.getElementById('start').style.display='none';
   document.getElementById('exam').style.display='block';
   document.getElementById('results').style.display='none';
-  document.getElementById('timerbar').style.display='flex';
-  document.getElementById('td').textContent='2:00:00';
-  document.getElementById('quizSub').textContent=BANK.modules.filter(function(m){return m.id===mod})[0].name+' - '+list.length+' questions';
   clearInterval(tick);
-  tick=setInterval(function(){
-    secs--;
-    if(secs<=0){clearInterval(tick);finish();return}
-    var h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60), s=secs%60;
-    document.getElementById('td').textContent=h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-    var bar=document.getElementById('timerbar');
-    bar.className='timerbar'+(secs<=300?' danger':secs<=900?' warn':'');
-  },1000);
+  if(mode==='exam'){
+    document.getElementById('timerbar').style.display='flex';
+    document.getElementById('td').textContent=fmt(secs);
+    tick=setInterval(function(){
+      secs--;
+      if(secs<=0){clearInterval(tick);finish();return}
+      document.getElementById('td').textContent=fmt(secs);
+      var bar=document.getElementById('timerbar');
+      bar.className='timerbar'+(secs<=300?' danger':secs<=900?' warn':'');
+    },1000);
+  } else {
+    document.getElementById('timerbar').style.display='none';
+  }
+  document.getElementById('quizSub').textContent=BANK.modules.filter(function(m){return m.id===mod})[0].name+' - '+list.length+' questions'+(mode==='exam'?' - '+Math.round(secs/60)+' min':'');
   render();
 }
 function toggleTimer(){
